@@ -1,26 +1,43 @@
-// ProductManagement.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Pencil, Trash2, PlusCircle } from 'lucide-react';
 
-const mockProducts = [
-  { id: 1, name: 'สินค้าทดสอบ 1', stock: 12, status: 'พร้อมขาย', price: 250 },
-  { id: 2, name: 'สินค้าทดสอบ 2', stock: 0, status: 'สินค้าหมด', price: 390 },
-  { id: 3, name: 'สินค้าทดสอบ 3', stock: 5, status: 'ปิดการขาย', price: 120 },
-];
-
 export default function ProductManagement() {
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState([]);
   const [showForm, setShowForm] = useState(false);
 
-  // เพิ่มสินค้าใหม่ (ตัวอย่างเพิ่ม id ใหม่โดยใช้ Date.now())
-  const handleAddProduct = (newProduct) => {
-    setProducts((prev) => [...prev, { ...newProduct, id: Date.now() }]);
-    setShowForm(false);
+  // ดึงข้อมูลสินค้าเมื่อเพจโหลด
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await axios.get('/api/products'); // API สำหรับดึงข้อมูลสินค้า
+        setProducts(response.data);
+      } catch (err) {
+        console.error('ไม่สามารถดึงข้อมูลสินค้าได้', err);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // เพิ่มสินค้าใหม่
+  const handleAddProduct = async (newProduct) => {
+    try {
+      const response = await axios.post('/api/products', newProduct); // API สำหรับเพิ่มสินค้า
+      setProducts((prev) => [...prev, response.data]);
+      setShowForm(false);
+    } catch (err) {
+      console.error('ไม่สามารถเพิ่มสินค้าได้', err);
+    }
   };
 
   // ลบสินค้า
-  const handleDelete = (id) => {
-    setProducts(products.filter((p) => p.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`/api/products/${id}`); // API สำหรับลบสินค้า
+      setProducts(products.filter((p) => p.id !== id));
+    } catch (err) {
+      console.error('ไม่สามารถลบสินค้าได้', err);
+    }
   };
 
   return (

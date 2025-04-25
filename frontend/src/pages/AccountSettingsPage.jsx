@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useNotification } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 
 const fadeIn = {
   initial: { opacity: 0, y: 24 },
@@ -11,7 +12,7 @@ const fadeIn = {
 };
 
 const AccountSettingsPage = () => {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [username, setUsername] = useState(user?.username || "");
   const [email, setEmail] = useState(user?.email || "test@example.com");
   const [address, setAddress] = useState("");
@@ -28,13 +29,24 @@ const AccountSettingsPage = () => {
   const { showNotification } = useNotification();
 
   useEffect(() => {
-    const storedImage = localStorage.getItem("profileImage");
-    if (storedImage) {
-      setProfileImage(storedImage);
-    }
+    // Fetch user profile data from API on component mount
+    const fetchUserProfile = async () => {
+      try {
+        const response = await axios.get("/api/user/profile");
+        const { username, email, phone, address, profileImage } = response.data;
+        setUsername(username);
+        setEmail(email);
+        setPhone(phone);
+        setAddress(address);
+        setProfileImage(profileImage);
+      } catch (error) {
+        showNotification("ไม่สามารถดึงข้อมูลผู้ใช้ได้", "error");
+      }
+    };
+    fetchUserProfile();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!captchaChecked) {
       showNotification("กรุณายืนยันว่าไม่ใช่บอท", "error");
       return;
@@ -43,17 +55,32 @@ const AccountSettingsPage = () => {
       showNotification("รหัสผ่านไม่ตรงกัน", "error");
       return;
     }
-    showNotification("บันทึกข้อมูลเรียบร้อยแล้ว", "success");
+
+    try {
+      const updatedUser = { username, email, phone, address, newPassword };
+      await axios.put("/api/user/profile", updatedUser);
+      showNotification("บันทึกข้อมูลเรียบร้อยแล้ว", "success");
+      // Optionally, update user context after saving
+      setUser({ ...user, ...updatedUser });
+    } catch (error) {
+      showNotification("ไม่สามารถบันทึกข้อมูลได้", "error");
+    }
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        localStorage.setItem("profileImage", reader.result);
-        setProfileImage(reader.result);
-        showNotification("อัปโหลดรูปสำเร็จ", "success");
+      reader.onloadend = async () => {
+        try {
+          const formData = new FormData();
+          formData.append("profileImage", file);
+          const response = await axios.post("/api/user/profile-image", formData);
+          setProfileImage(response.data.profileImage);
+          showNotification("อัปโหลดรูปสำเร็จ", "success");
+        } catch (error) {
+          showNotification("ไม่สามารถอัปโหลดรูปได้", "error");
+        }
       };
       reader.readAsDataURL(file);
     } else {
@@ -65,11 +92,15 @@ const AccountSettingsPage = () => {
     setShowConfirmDelete(true);
   };
 
-  const confirmDeleteImage = () => {
-    localStorage.removeItem("profileImage");
-    setProfileImage(null);
-    setShowConfirmDelete(false);
-    showNotification("ลบรูปเรียบร้อยแล้ว", "error");
+  const confirmDeleteImage = async () => {
+    try {
+      await axios.delete("/api/user/profile-image");
+      setProfileImage(null);
+      setShowConfirmDelete(false);
+      showNotification("ลบรูปเรียบร้อยแล้ว", "error");
+    } catch (error) {
+      showNotification("ไม่สามารถลบรูปได้", "error");
+    }
   };
 
   const cancelDeleteImage = () => {

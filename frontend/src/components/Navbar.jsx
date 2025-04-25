@@ -13,7 +13,7 @@ import { CartContext } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const { cartItems } = useContext(CartContext);
   const location = useLocation();
   const navigate = useNavigate();
@@ -37,17 +37,45 @@ const Navbar = () => {
 
   const toggleAccountMenu = () => setShowAccountMenu((prev) => !prev);
 
-  const handleLogout = () => {
-    logout();
-    setPopupMessage('ออกจากระบบแล้ว');
-    setShowAccountMenu(false);
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${user.token}`, // ใช้ token ที่ได้จากการล็อกอิน
+        },
+      });
+      logout();
+      setPopupMessage('ออกจากระบบแล้ว');
+      setShowAccountMenu(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
   };
 
   const cartCount = cartItems.reduce((total, item) => total + (item.quantity || 1), 0);
 
+  // Fetch user information when logged in
+  const fetchUserInfo = async () => {
+    try {
+      const response = await fetch('/api/users/me', {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      });
+      const data = await response.json();
+      setUser(data); // Update user state with data from API
+    } catch (error) {
+      console.error('Failed to fetch user info', error);
+    }
+  };
+
   useEffect(() => {
-    if (user) setPopupMessage('เข้าสู่ระบบสำเร็จ!');
+    if (user) {
+      fetchUserInfo(); // Fetch user data when user is available
+      setPopupMessage('เข้าสู่ระบบสำเร็จ!');
+    }
   }, [user]);
 
   useEffect(() => {
@@ -227,13 +255,13 @@ const Navbar = () => {
           </div>
           <div className="text-sm text-gray-600 mt-2">
             <p><span className="font-semibold text-black">สมัครเมื่อ:</span> {user.memberSince || '1 ม.ค. 2024'}</p>
-            <p><span className="font-semibold text-black">ที่อยู่:</span> {user.address || 'ยังไม่ระบุที่อยู่'}</p>
+            <p><span className="font-semibold text-black">ที่อยู่:</span> {user.address || 'ยังไม่ระบุ'}</p>
           </div>
-          <div className="mt-4 space-y-2">
-            <button onClick={goToAccountSettings} className="flex items-center gap-2 w-full text-left hover:text-blue-600">
+          <div className="flex flex-col gap-2 mt-4">
+            <button onClick={goToAccountSettings} className="flex items-center gap-2 py-2 px-3 rounded-md text-blue-500 hover:bg-blue-100">
               <FiSettings /> ตั้งค่าบัญชี
             </button>
-            <button onClick={handleLogout} className="flex items-center gap-2 w-full text-left text-red-500 hover:text-red-700">
+            <button onClick={handleLogout} className="flex items-center gap-2 py-2 px-3 rounded-md text-red-500 hover:bg-red-100">
               <FiLogOut /> ออกจากระบบ
             </button>
           </div>

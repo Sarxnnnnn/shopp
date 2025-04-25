@@ -1,18 +1,41 @@
 // UserManagement.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
-
-const mockUsers = [
-  { id: 1, name: 'สมชาย ตัวอย่าง', email: 'somchai@example.com', role: 'ผู้ใช้ทั่วไป', status: 'ใช้งานอยู่' },
-  { id: 2, name: 'สมหญิง ทดสอบ', email: 'somying@example.com', role: 'ผู้ดูแลระบบ', status: 'ระงับการใช้งาน' },
-];
+import axios from 'axios';
 
 export default function UserManagement() {
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleDelete = (id) => {
-    setUsers(users.filter((user) => user.id !== id));
+  // ดึงข้อมูลผู้ใช้จาก API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get('/api/users'); // ใช้ API ที่คุณมี
+        setUsers(response.data); // สมมุติว่า API ส่งคืนข้อมูลผู้ใช้
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // ลบผู้ใช้
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`/api/users/${id}`); // ส่งคำขอลบไปยัง API
+      setUsers(users.filter((user) => user.id !== id)); // ลบจาก state
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    }
   };
+
+  if (loading) {
+    return <div>Loading...</div>; // ระหว่างที่โหลดข้อมูล
+  }
 
   return (
     <div className="space-y-6">
@@ -46,7 +69,10 @@ export default function UserManagement() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <button onClick={() => handleDelete(user.id)} className="text-red-500 dark:text-red-400 hover:underline">
+                  <button
+                    onClick={() => handleDelete(user.id)}
+                    className="text-red-500 dark:text-red-400 hover:underline"
+                  >
                     <Trash2 size={18} />
                   </button>
                 </td>

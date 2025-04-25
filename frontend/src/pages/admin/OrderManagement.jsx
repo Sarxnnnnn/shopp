@@ -1,38 +1,49 @@
-// OrderManagement.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Truck, XCircle, CheckCircle2 } from 'lucide-react';
 
-const mockOrders = [
-  {
-    id: 'ORD001',
-    customer: 'สมปอง ทดสอบ',
-    date: '10 เม.ย. 2025',
-    total: 1590,
-    status: 'รอดำเนินการ',
-  },
-  {
-    id: 'ORD002',
-    customer: 'สุดา พัฒนา',
-    date: '9 เม.ย. 2025',
-    total: 299,
-    status: 'จัดส่งแล้ว',
-  },
-];
-
 export default function OrderManagement() {
-  const [orders, setOrders] = useState(mockOrders);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const updateStatus = (id, newStatus) => {
-    setOrders((prev) =>
-      prev.map((order) =>
-        order.id === id ? { ...order, status: newStatus } : order
-      )
-    );
+  useEffect(() => {
+    // ดึงข้อมูลออเดอร์จาก API เมื่อเพจโหลด
+    const fetchOrders = async () => {
+      try {
+        const response = await axios.get('/api/orders'); // API สำหรับดึงรายการออเดอร์
+        setOrders(response.data);
+        setLoading(false);
+      } catch (err) {
+        setError('ไม่สามารถดึงข้อมูลออเดอร์ได้');
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  const updateStatus = async (id, newStatus) => {
+    try {
+      // อัปเดตสถานะของออเดอร์ผ่าน API
+      const response = await axios.put(`/api/orders/${id}`, { status: newStatus });
+      // อัปเดตสถานะใน state หลังจากอัปเดตใน backend สำเร็จ
+      setOrders((prev) =>
+        prev.map((order) => (order.id === id ? { ...order, status: newStatus } : order))
+      );
+    } catch (err) {
+      setError('ไม่สามารถอัปเดตสถานะออเดอร์ได้');
+    }
   };
+
+  if (loading) {
+    return <div>กำลังโหลด...</div>;
+  }
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-yellow-500">จัดการออเดอร์</h1>
+      {error && <p className="text-red-500 text-center">{error}</p>}
       <div className="overflow-x-auto">
         <table className="w-full table-auto border-collapse rounded-xl overflow-hidden shadow">
           <thead className="bg-yellow-500 text-white">

@@ -1,39 +1,36 @@
-// OverviewTab.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Users, Boxes, ReceiptText, DollarSign } from 'lucide-react';
 
-// สรุปข้อมูลภาพรวม
-const stats = [
-  {
-    title: 'ผู้ใช้งานทั้งหมด',
-    icon: <Users className="text-blue-500" size={28} />,
-    value: '1,234',
-    bg: 'bg-blue-100 dark:bg-blue-900',
-  },
-  {
-    title: 'จำนวนสินค้า',
-    icon: <Boxes className="text-green-500" size={28} />,
-    value: '215',
-    bg: 'bg-green-100 dark:bg-green-900',
-  },
-  {
-    title: 'คำสั่งซื้อทั้งหมด',
-    icon: <ReceiptText className="text-yellow-500" size={28} />,
-    value: '982',
-    bg: 'bg-yellow-100 dark:bg-yellow-900',
-  },
-  {
-    title: 'ยอดขายรวม',
-    icon: <DollarSign className="text-purple-500" size={28} />,
-    value: '฿185,000',
-    bg: 'bg-purple-100 dark:bg-purple-900',
-  },
-];
-
 export default function OverviewTab() {
+  const [stats, setStats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    // ดึงข้อมูลภาพรวมจาก API
+    const fetchStats = async () => {
+      try {
+        const response = await axios.get('/api/overview'); // API สำหรับดึงข้อมูลภาพรวม
+        setStats(response.data);
+        setLoading(false);
+      } catch (err) {
+        setError('ไม่สามารถดึงข้อมูลภาพรวมได้');
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return <div>กำลังโหลด...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-yellow-500">ภาพรวมระบบ</h1>
+      {error && <p className="text-red-500 text-center">{error}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((item, idx) => (
           <div key={idx} className={`rounded-xl p-4 flex items-center gap-4 shadow-md ${item.bg}`}>

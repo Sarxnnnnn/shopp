@@ -6,7 +6,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register } = useAuth(); // เรียกฟังก์ชันจาก context
   const { showNotification } = useNotification();
 
   const [username, setUsername] = useState('');
@@ -15,22 +15,16 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
 
-    // ป้องกันชื่อซ้ำแบบจำลอง (คุณสามารถใช้ backend จริงในอนาคตได้)
-    const existingUser = localStorage.getItem('user');
-    if (existingUser && JSON.parse(existingUser).email === email) {
-      setError('บัญชีนี้มีอยู่แล้ว');
-      return;
-    }
-
     try {
-      register(email, password, username); // 👉 เรียกจาก AuthContext
+      await register(username, email, password); // ✅ เรียก context register
       showNotification(`สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ${username}`, 'success');
-      navigate('/');
+      navigate('/'); // นำทางหลังสมัครเสร็จ
     } catch (err) {
-      setError('เกิดข้อผิดพลาดในการสมัครสมาชิก');
+      console.error(err);
+      setError(err?.response?.data?.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
     }
   };
 
@@ -56,7 +50,6 @@ const RegisterPage = () => {
             required
             className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-700 text-black dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
           />
-
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}

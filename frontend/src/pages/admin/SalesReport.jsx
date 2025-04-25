@@ -1,18 +1,34 @@
 // SalesReport.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart2 } from 'lucide-react';
-
-const salesData = [
-  { date: '1 เม.ย.', total: 2000 },
-  { date: '2 เม.ย.', total: 3500 },
-  { date: '3 เม.ย.', total: 2200 },
-  { date: '4 เม.ย.', total: 4100 },
-  { date: '5 เม.ย.', total: 2800 },
-  { date: '6 เม.ย.', total: 3600 },
-];
+import axios from 'axios';
 
 export default function SalesReport() {
+  const [salesData, setSalesData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // ดึงข้อมูลจาก API
+  useEffect(() => {
+    const fetchSalesData = async () => {
+      try {
+        const response = await axios.get('/api/sales'); // ใช้ API ที่คุณมี
+        setSalesData(response.data); // สมมุติว่า API คืนค่าข้อมูลยอดขาย
+      } catch (error) {
+        console.error('Error fetching sales data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSalesData();
+  }, []);
+  
+  // คำนวณยอดขายรวม
   const totalSales = salesData.reduce((sum, item) => sum + item.total, 0);
+
+  if (loading) {
+    return <div>Loading...</div>;  // ระหว่างที่โหลดข้อมูล
+  }
 
   return (
     <div className="space-y-6">
@@ -34,7 +50,7 @@ export default function SalesReport() {
               <div className="w-full mx-4 h-4 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden">
                 <div
                   className="h-full bg-yellow-500 transition-all"
-                  style={{ width: `${(item.total / 4100) * 100}%` }}
+                  style={{ width: `${(item.total / Math.max(...salesData.map(i => i.total))) * 100}%` }} // Normalize width
                 ></div>
               </div>
               <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">

@@ -3,10 +3,10 @@ import { useAuth } from "../contexts/AuthContext";
 import { useNotification } from "../contexts/NotificationContext";
 
 const AccountEditModal = ({ onClose }) => {
-  const { user, setUser } = useAuth();
+  const { user, updateUserInfo } = useAuth();
   const { showNotification } = useNotification();
 
-  const [fullName, setFullName] = useState(user?.fullName || "");
+  const [fullName, setFullName] = useState(user?.name || "");
   const [address, setAddress] = useState(user?.address || "");
   const [phone, setPhone] = useState(user?.phone || "");
 
@@ -16,9 +16,8 @@ const AccountEditModal = ({ onClose }) => {
       return;
     }
 
-    setUser({
-      ...user,
-      fullName,
+    updateUserInfo({
+      name: fullName,
       address,
       phone,
     });

@@ -1,19 +1,35 @@
-// server.js
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const app = express();
+const dotenv = require('dotenv');
 
+// load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Import Routes
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/products', require('./routes/products'));
-app.use('/api/orders', require('./routes/orders'));
-app.use('/api/config', require('./routes/config'));
-app.use('/api/content', require('./routes/content'));
+// Routes
+const adminRoutes = require('./routes/admin');
+const authRoutes = require('./routes/auth');
+const productRoutes = require('./routes/products');
+const orderRoutes = require('./routes/orders');
+const paymentRoutes = require('./routes/payment');
 
-// Start Server
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.use('/api/admin', adminRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/payment', paymentRoutes);
+
+// Test route
+app.get('/', (req, res) => {
+  res.send('Backend API is running!');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});

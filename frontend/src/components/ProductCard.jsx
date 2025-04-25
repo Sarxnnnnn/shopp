@@ -19,7 +19,7 @@ const ProductCard = ({ product, onShowDetail, onAddToCart }) => {
         className="w-full h-40 object-cover rounded-t-xl transition-transform duration-500 ease-in-out"
       />
       <div className="p-4 flex flex-col flex-1 justify-between">
-        <div>
+        <div className="relative">
           <h4 className="font-semibold text-md mb-1">{product.name}</h4>
           <p className="text-yellow-500 font-bold mb-2">{product.price}</p>
 

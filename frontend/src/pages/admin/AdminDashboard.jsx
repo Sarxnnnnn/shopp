@@ -1,5 +1,4 @@
-// AdminDashboard.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Boxes, Users, ReceiptText, BarChart 
 } from 'lucide-react';
@@ -8,6 +7,7 @@ import ProductManagement from './ProductManagement';
 import UserManagement from './UserManagement';
 import OrderManagement from './OrderManagement';
 import SalesReport from './SalesReport';
+import { useAuth } from '../../contexts/AuthContext';
 
 // เมนูของแอดมิน
 const menuItems = [
@@ -20,6 +20,34 @@ const menuItems = [
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState(0);
+  const [data, setData] = useState(null); // State to hold data from backend
+  const { token } = useAuth(); // Assuming token from AuthContext to authenticate API calls
+  
+  // Fetch data from backend API when the dashboard loads
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/dashboard', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,  // Attach token for authentication
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Error fetching dashboard data');
+        }
+
+        const result = await response.json();
+        setData(result); // Set the fetched data to state
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    fetchData();
+  }, [token]);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-foreground px-4 pt-24 md:ml-60">
@@ -44,10 +72,19 @@ export default function AdminDashboard() {
             ))}
           </nav>
         </aside>
+
         {/* Main Content */}
         <main className="flex-1">
           <div className="bg-white dark:bg-zinc-800 shadow-md rounded-lg p-6">
+            {/* Display the component corresponding to the active tab */}
             {menuItems[activeTab].component}
+            {/* Optionally, show fetched data if available */}
+            {data && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-2">ข้อมูลภาพรวม:</h3>
+                <pre className="text-sm bg-gray-100 p-4 rounded-md">{JSON.stringify(data, null, 2)}</pre>
+              </div>
+            )}
           </div>
         </main>
       </div>

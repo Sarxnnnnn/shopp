@@ -6,7 +6,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth(); // ใช้ login จาก context
   const { showNotification } = useNotification();
 
   const [email, setEmail] = useState('');
@@ -15,25 +15,22 @@ const LoginPage = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // จำลอง user: ถ้า email เป็น admin ให้ role = 'admin'
-    if (
-      (email === 'test@example.com' && password === '123456') ||
-      (email === 'admin@example.com' && password === '123456')
-    ) {
-      login(email, password, rememberMe);
+    try {
+      await login(email, password, rememberMe); // ✅ เรียก context login
       showNotification(`เข้าสู่ระบบสำเร็จ ยินดีต้อนรับ ${email}`, 'success');
 
-      // หากเป็นแอดมิน ให้ไปหน้า /admin
-      if (email === 'admin@example.com') {
+      // ตรวจ role เพื่อเปลี่ยนหน้า
+      if (user?.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/');
       }
-    } else {
-      setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+    } catch (err) {
+      console.error(err);
+      setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
       showNotification('เข้าสู่ระบบไม่สำเร็จ', 'error');
     }
   };

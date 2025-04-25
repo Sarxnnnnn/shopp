@@ -1,14 +1,32 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // จำลองส่งอีเมล reset password
-    setSubmitted(true);
+    setLoading(true);
+
+    try {
+      const response = await axios.post('/api/forgot-password', { email });
+
+      if (response.data.success) {
+        setSubmitted(true);
+        setError('');
+      } else {
+        setError(response.data.message || 'เกิดข้อผิดพลาดในการส่งอีเมล');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('เกิดข้อผิดพลาดในการส่งคำขอ');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,12 +50,15 @@ const ForgotPasswordPage = () => {
             />
             <button
               type="submit"
+              disabled={loading}
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded transition"
             >
-              ส่งลิงก์รีเซ็ตรหัสผ่าน
+              {loading ? 'กำลังส่ง...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
             </button>
           </form>
         )}
+
+        {error && <div className="text-red-500 text-center text-sm">{error}</div>}
 
         <div className="text-center text-sm mt-4">
           <Link to="/login" className="text-blue-400 hover:underline">

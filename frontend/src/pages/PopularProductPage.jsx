@@ -1,43 +1,11 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { CartContext } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import ProductCard from '../components/ProductCard';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { motion } from 'framer-motion';
-
-// ข้อมูลสินค้ายอดนิยม (mock data)
-const popularProductCategories = [
-  {
-    name: 'สินค้ายอดนิยม',
-    products: [
-      {
-        name: 'หูฟังไร้สาย',
-        price: '1990 บาท',
-        image: '/images/test.jpg',
-        tag: 'แนะนำ',
-        description: 'เสียงดี เบสแน่น แบตอึด',
-        outOfStock: false,
-      },
-      {
-        name: 'คีย์บอร์ดเกมมิ่ง',
-        price: '1290 บาท',
-        image: '/images/test.jpg',
-        tag: 'ขายดี',
-        description: 'ไฟ RGB ปรับแต่งได้ เสียงคลิกมันส์มือ',
-        outOfStock: false,
-      },
-      {
-        name: 'เมาส์ไร้สาย',
-        price: '790 บาท',
-        image: '/images/test.jpg',
-        tag: 'แนะนำ',
-        description: 'แม่นยำ น้ำหนักเบา',
-        outOfStock: true,
-      },
-    ],
-  },
-];
+import axios from 'axios';
 
 // แปลงราคาจาก string เป็น number
 const extractNumber = (priceString) =>
@@ -51,6 +19,31 @@ const PopularProductPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortType, setSortType] = useState(0); // 0 = default, 1 = name, 2 = price
+  const [popularProductCategories, setPopularProductCategories] = useState([]);
+
+  // ดึงข้อมูลสินค้าจาก API
+  useEffect(() => {
+    const fetchPopularProducts = async () => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products/popular`);
+        const formattedCategories = res.data.map((category) => ({
+          ...category,
+          products: category.products.map((product) => ({
+            ...product,
+            price: `${product.price} บาท`,
+            outOfStock: product.stock <= 0,
+            tag: 'แนะนำ', // สามารถปรับให้ตรงกับข้อมูลจาก API
+          })),
+        }));
+        setPopularProductCategories(formattedCategories);
+      } catch (error) {
+        showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า', 'error');
+        console.error('Error loading popular products:', error);
+      }
+    };
+
+    fetchPopularProducts();
+  }, [showNotification]);
 
   // เพิ่มสินค้าลงตะกร้า
   const handleAddToCart = (product) => {

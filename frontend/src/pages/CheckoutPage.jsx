@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useCart } from "../contexts/CartContext";
 import { useNotification } from "../contexts/NotificationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import AccountEditModal from "../components/AccountEditModal";
 
 const CheckoutPage = () => {
@@ -15,6 +16,9 @@ const CheckoutPage = () => {
   const [paymentMethod, setPaymentMethod] = useState("credit_card");
   const [isLoading, setIsLoading] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [qr, setQr] = useState(null);
+  const [ref, setRef] = useState(null);
+  const [orderId, setOrderId] = useState(null);
 
   const total = cartItems.reduce((acc, item) => {
     const price = Number(item.price) || 0;
@@ -24,6 +28,45 @@ const CheckoutPage = () => {
 
   const isUserInfoComplete =
     !!user?.fullName?.trim() && !!user?.address?.trim() && !!user?.phone?.trim();
+
+  const generateQR = async () => {
+    try {
+      const res = await axios.post("http://localhost:5000/api/payment/promptpay", {
+        amount: total.toFixed(2),
+      });
+      setQr(res.data.qr);
+      setRef(res.data.ref);
+    } catch (error) {
+      showNotification("ไม่สามารถสร้าง QR Code ได้", "error");
+    }
+  };
+
+  const saveOrder = async () => {
+    try {
+      const res = await axios.post("http://localhost:5000/api/orders", {
+        userId: user.id,
+        totalPrice: total,
+        promptpayRef: ref,
+        cartItems,
+        paymentMethod,
+      });
+      setOrderId(res.data.orderId);
+    } catch (error) {
+      showNotification("เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ", "error");
+    }
+  };
+
+  useEffect(() => {
+    if (paymentMethod === "mobile_banking") {
+      generateQR();
+    }
+  }, [paymentMethod]);
+
+  useEffect(() => {
+    if (ref && user) {
+      saveOrder();
+    }
+  }, [ref, user]);
 
   const handleCheckout = () => {
     if (cartItems.length === 0) {
@@ -48,7 +91,6 @@ const CheckoutPage = () => {
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 lg:pl-72 bg-background text-foreground transition-colors">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Heading */}
         <motion.h1
           className="text-3xl font-bold text-center"
           initial={{ opacity: 0, y: -10 }}
@@ -167,19 +209,24 @@ const CheckoutPage = () => {
           </section>
 
           {/* QR Code Section */}
-          {paymentMethod === "mobile_banking" && (
+          {paymentMethod === "mobile_banking" && qr && (
             <section className="text-center">
               <h3 className="text-lg font-semibold mt-4 mb-2">
                 ชำระเงินผ่าน QR Code
               </h3>
               <img
-                src="/mock-qr.png"
+                src={qr}
                 alt="QR Code"
                 className="w-48 h-48 mx-auto rounded-lg shadow-lg border dark:border-gray-600"
               />
               <p className="text-sm text-muted-foreground mt-2">
                 สแกน QR เพื่อชำระเงิน
               </p>
+              {orderId && (
+                <p className="mt-2 text-green-500 text-sm">
+                  🧾 หมายเลขคำสั่งซื้อ: {orderId}
+                </p>
+              )}
             </section>
           )}
 
@@ -231,9 +278,7 @@ const CheckoutPage = () => {
       </div>
 
       {/* Modal แก้ไขข้อมูลบัญชี */}
-      {showEditModal && (
-        <AccountEditModal onClose={() => setShowEditModal(false)} />
-      )}
+      {showEditModal && <AccountEditModal onClose={() => setShowEditModal(false)} />}
     </div>
   );
 };

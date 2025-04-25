@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { FaFireAlt, FaStar, FaCheck, FaTags, FaTimes } from 'react-icons/fa';
+import { CartContext } from '../contexts/CartContext'; // ใช้ CartContext
+import { useAuth } from '../contexts/AuthContext'; // ใช้ AuthContext
 
 // 🔖 ส่วนแสดงแท็กต่าง ๆ แยกออกมาให้อ่านง่าย
 const ProductTag = ({ tag }) => {
@@ -40,8 +42,19 @@ const ProductTag = ({ tag }) => {
   }
 };
 
-const ProductDetailModal = ({ product, onClose, onAddToCart }) => {
+const ProductDetailModal = ({ product, onClose }) => {
+  const { user } = useAuth(); // ใช้ข้อมูลจาก AuthContext
+  const { addToCart } = useContext(CartContext); // ใช้ CartContext
   if (!product) return null;
+
+  const handleAddToCart = () => {
+    if (user) {
+      addToCart(product); // เพิ่มสินค้าลงตะกร้าผ่าน CartContext
+      onClose();
+    } else {
+      alert('กรุณาล็อกอินก่อนเพิ่มสินค้าลงตะกร้า');
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
@@ -80,12 +93,7 @@ const ProductDetailModal = ({ product, onClose, onAddToCart }) => {
         {/* ปุ่มเพิ่มลงตะกร้า */}
         <div className="flex gap-3 justify-center">
           <button
-            onClick={() => {
-              if (!product.outOfStock) {
-                onAddToCart(product);
-                onClose();
-              }
-            }}
+            onClick={handleAddToCart} // ใช้ handleAddToCart
             disabled={product.outOfStock}
             className={`py-2 px-4 rounded-md font-semibold transition-all transform hover:scale-105 ${
               product.outOfStock

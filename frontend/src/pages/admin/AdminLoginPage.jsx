@@ -1,11 +1,9 @@
-// AdminLoginPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
 
-// หน้า Login สำหรับแอดมิน
 const AdminLoginPage = () => {
-  const { login } = useAdminAuth();
+  const { login } = useAdminAuth(); // ใช้ฟังก์ชัน login จาก context
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,7 +11,6 @@ const AdminLoginPage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // ถ้ามี token อยู่แล้วให้รีไดเรกต์
     const token = localStorage.getItem('adminToken');
     if (token) navigate('/admin/dashboard');
   }, [navigate]);
@@ -21,13 +18,8 @@ const AdminLoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await login(email, password);
-      // หากเลือกจดจำ ให้เก็บใน localStorage (เพิ่มเพิ่มเติมได้)
-      if (remember) {
-        localStorage.setItem('adminLogin', JSON.stringify({ email, password, remember: true }));
-      } else {
-        localStorage.removeItem('adminLogin');
-      }
+      // ใช้ฟังก์ชัน login จาก context
+      await login(email, password, remember);
       navigate('/admin/dashboard');
     } catch (err) {
       setError('เข้าสู่ระบบไม่สำเร็จ');

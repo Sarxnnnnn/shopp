@@ -1,4 +1,3 @@
-// routes/products.js
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
@@ -7,9 +6,18 @@ const pool = require('../config/db');
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM products');
-    res.json(rows);
+    res.json({
+      success: true,
+      message: 'Products fetched successfully',
+      data: rows
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error(err);  // Log the error for debugging
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching products',
+      error: err.message
+    });
   }
 });
 
@@ -21,9 +29,18 @@ router.post('/', async (req, res) => {
       'INSERT INTO products (name, price, stock, description, status, image) VALUES (?, ?, ?, ?, ?, ?)',
       [name, price, stock, description, status, image]
     );
-    res.json({ id: result.insertId, name, price, stock, description, status, image });
+    res.json({
+      success: true,
+      message: 'Product added successfully',
+      product: { id: result.insertId, name, price, stock, description, status, image }
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error(err);  // Log the error for debugging
+    res.status(500).json({
+      success: false,
+      message: 'Error adding product',
+      error: err.message
+    });
   }
 });
 
@@ -36,9 +53,18 @@ router.put('/:id', async (req, res) => {
       'UPDATE products SET name = ?, price = ?, stock = ?, description = ?, status = ?, image = ? WHERE id = ?',
       [name, price, stock, description, status, image, id]
     );
-    res.json({ id, name, price, stock, description, status, image });
+    res.json({
+      success: true,
+      message: 'Product updated successfully',
+      product: { id, name, price, stock, description, status, image }
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error(err);  // Log the error for debugging
+    res.status(500).json({
+      success: false,
+      message: 'Error updating product',
+      error: err.message
+    });
   }
 });
 
@@ -47,9 +73,17 @@ router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query('DELETE FROM products WHERE id = ?', [id]);
-    res.json({ message: 'Product deleted' });
+    res.json({
+      success: true,
+      message: 'Product deleted successfully'
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error(err);  // Log the error for debugging
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting product',
+      error: err.message
+    });
   }
 });
 
