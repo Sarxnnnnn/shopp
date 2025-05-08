@@ -1,18 +1,14 @@
 require('dotenv').config();
 const mysql = require('mysql2/promise');
 
-// เชื่อมต่อฐานข้อมูลโดยใช้ค่าจาก Railway หรือ Local ถ้าไม่มี
 const pool = mysql.createPool({
-  host: process.env.MYSQLHOST || 'localhost',
-  user: process.env.MYSQLUSER || 'root',
-  password: process.env.MYSQLPASSWORD || '',
-  database: process.env.MYSQLDATABASE || 'shop_db',
-  port: process.env.MYSQLPORT || 3306,
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME || 'shop_db',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
-  // เพิ่ม SSL สำหรับ Production
-  ssl: process.env.NODE_ENV === 'production' ? {} : false
+  queueLimit: 0
 });
 
 // Add connection error handling

@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// ใช้ URL จาก env หรือ localhost ถ้าไม่มี
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const baseURL = 'http://localhost:3000';
 
 const axiosInstance = axios.create({
   baseURL,

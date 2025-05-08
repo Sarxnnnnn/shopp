@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: my-backend
+    env: node
+    buildCommand: npm run build
+    startCommand: npm start
+    rootDirectory: ./
+    envVars:
+      - key: NODE_ENV
+        value: production
