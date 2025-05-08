@@ -1,17 +1,19 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import ProductCard from '../components/ProductCard';
 import ProductDetailModal from '../components/ProductDetailModal';
-import { CartContext } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import axios from 'axios';
+import { fetchNormalProducts } from '../utils/api';
 
-const extractNumber = (priceString) =>
-  parseInt(priceString.replace(/[^\d]/g, '')) || 0;
+// ฟังก์ชัน extractNumber
+const extractNumber = (priceString) => {
+  if (typeof priceString === 'number') return priceString;
+  return parseFloat(priceString.replace(/[^\d.]/g, '')) || 0;
+};
 
 const NormalProductPage = () => {
   const { isLoggedIn } = useAuth();
-  const { addToCart } = useContext(CartContext);
   const { showNotification } = useNotification();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -20,48 +22,37 @@ const NormalProductPage = () => {
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const loadProducts = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products`);
-        const formattedProducts = res.data.map((p) => ({
-          ...p,
-          price: `${p.price} บาท`,
-          outOfStock: p.stock <= 0,
-          tag: 'ใหม่', // Placeholder สำหรับ tag, สามารถแก้ไขเพิ่มเติมได้หากมีระบบแท็กจริง
-        }));
-        setProducts(formattedProducts);
+        const response = await fetchNormalProducts();
+        if (response.success) {
+          setProducts(response.data);
+        }
       } catch (error) {
         showNotification('เกิดข้อผิดพลาดในการโหลดสินค้า', 'error');
-        console.error('Error loading products:', error);
       }
     };
-    fetchProducts();
+    loadProducts();
   }, [showNotification]);
 
-  // 🔸 เพิ่มสินค้าเข้าตะกร้า
-  const handleAddToCart = (product) => {
-    if (!isLoggedIn) {
-      showNotification('กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้า', 'error');
-      return;
-    }
-    if (product.outOfStock) {
-      showNotification(`${product.name} สินค้าหมดแล้ว`, 'error');
-      return;
-    }
-    addToCart(product);
-    showNotification(`เพิ่ม ${product.name} ลงในตะกร้าแล้ว`, 'success');
-  };
-
-  // 🔸 กรองและเรียงสินค้า
+  // ฟังก์ชัน getSortedFilteredProducts
   const getSortedFilteredProducts = () => {
+    if (!Array.isArray(products)) return [];
+    
     let filtered = products.filter((p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    
     if (sortType === 1) {
-      filtered.sort((a, b) => a.name.localeCompare(b.name));
+      filtered.sort((a, b) => a.name.localeCompare(b.name, 'th'));
     } else if (sortType === 2) {
-      filtered.sort((a, b) => extractNumber(a.price) - extractNumber(b.price));
+      filtered.sort((a, b) => {
+        const priceA = extractNumber(a.price);
+        const priceB = extractNumber(b.price);
+        return priceA - priceB;
+      });
     }
+    
     return filtered;
   };
 
@@ -75,9 +66,16 @@ const NormalProductPage = () => {
   const filteredProducts = getSortedFilteredProducts();
 
   return (
-    <div className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900 text-black dark:text-white">
-      {/* 🔹 แถบค้นหา + ปุ่มเรียง */}
-      <div className="w-full flex flex-col md:flex-row md:justify-between items-center gap-4 mb-8">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
+    >
+      <motion.div 
+        initial={{ y: -20 }}
+        animate={{ y: 0 }}
+        className="w-full flex flex-col md:flex-row md:justify-between items-center gap-4 mb-8"
+      >
         <input
           type="text"
           placeholder="🔍 ค้นหาสินค้า..."
@@ -85,36 +83,43 @@ const NormalProductPage = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button
+        <motion.button
           onClick={handleSortChange}
+          whileTap={{ scale: 0.95 }}
           className="px-4 py-2 rounded-md bg-yellow-400 text-black font-semibold shadow hover:bg-yellow-500 transition-all"
         >
           ⚙ {sortLabel}
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
-      {/* 🔹 แสดงสินค้า */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+      <motion.div 
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4"
+      >
         {filteredProducts.map((product, pIndex) => (
-          <div key={pIndex} className="transition-transform duration-300 hover:scale-105">
+          <motion.div
+            key={pIndex}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: pIndex * 0.1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="transform transition-all duration-300"
+          >
             <ProductCard
               product={product}
               onShowDetail={() => setSelectedProduct(product)}
-              onAddToCart={() => handleAddToCart(product)}
             />
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
-      {/* 🔹 Modal รายละเอียดสินค้า */}
       {selectedProduct && (
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          onAddToCart={() => handleAddToCart(selectedProduct)}
         />
       )}
-    </div>
+    </motion.div>
   );
 };
 

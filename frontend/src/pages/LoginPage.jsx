@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, user } = useAuth(); // ใช้ login จาก context
+  const { login, user } = useAuth();
   const { showNotification } = useNotification();
+  const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,28 +21,38 @@ const LoginPage = () => {
     e.preventDefault();
 
     try {
-      await login(email, password, rememberMe); // ✅ เรียก context login
-      showNotification(`เข้าสู่ระบบสำเร็จ ยินดีต้อนรับ ${email}`, 'success');
-
-      // ตรวจ role เพื่อเปลี่ยนหน้า
-      if (user?.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
+      await login(email, password, rememberMe);
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true });
     } catch (err) {
-      console.error(err);
-      setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
-      showNotification('เข้าสู่ระบบไม่สำเร็จ', 'error');
+      setError(err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-black dark:text-white px-4">
-      <div className="md:ml-[15rem] w-full max-w-md bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 space-y-6">
-        <h2 className="text-2xl font-bold text-center">เข้าสู่ระบบ</h2>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="md:ml-[15rem] w-full max-w-md bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 space-y-6"
+      >
+        <motion.h2 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-2xl font-bold text-center"
+        >
+          เข้าสู่ระบบ
+        </motion.h2>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <motion.form 
+          onSubmit={handleLogin} 
+          className="space-y-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
           <input
             type="email"
             placeholder="อีเมล"
@@ -90,7 +102,7 @@ const LoginPage = () => {
           >
             เข้าสู่ระบบ
           </button>
-        </form>
+        </motion.form>
 
         <div className="text-right text-sm mt-2">
           <Link to="/forgot-password" className="text-blue-400 hover:underline">
@@ -104,7 +116,7 @@ const LoginPage = () => {
             สมัครสมาชิก
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };

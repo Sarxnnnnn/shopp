@@ -1,12 +1,6 @@
-// src/pages/PrivacyPolicyPage.jsx
 import React from "react";
 import { motion } from "framer-motion";
-import {
-  UserCheck,
-  BarChart3,
-  ShieldCheck,
-  LockKeyhole,
-} from "lucide-react";
+import { UserCheck, BarChart3, ShieldCheck, LockKeyhole } from "lucide-react";
 
 // 🔹 เนื้อหานโยบายความเป็นส่วนตัว
 const policyItems = [
@@ -38,45 +32,32 @@ const policyItems = [
 
 const PrivacyPolicyPage = () => {
   return (
-    <motion.div
-      className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      {/* 🔸 หัวข้อหลัก */}
-      <motion.div
-        className="text-center mb-8"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.1 }}
-      >
-        <h1 className="text-3xl font-bold mb-4">นโยบายความเป็นส่วนตัว</h1>
-        <p className="text-lg text-gray-700 dark:text-gray-300 max-w-2xl mx-auto">
-          เราให้ความสำคัญกับความเป็นส่วนตัวของคุณ กรุณาอ่านนโยบายนี้เพื่อเข้าใจว่าเราจัดการข้อมูลของคุณอย่างไร
-        </p>
-      </motion.div>
+    <div className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
+          นโยบายความเป็นส่วนตัว
+        </h1>
 
-      {/* 🔸 กล่องข้อมูลนโยบาย */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
-        {policyItems.map((item, index) => (
-          <motion.div
-            key={index}
-            className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow hover:shadow-lg transition"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 + index * 0.15 }}
-            whileHover={{ scale: 1.03 }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              {item.icon}
-              <h2 className="font-semibold text-lg">{item.title}</h2>
-            </div>
-            <p className="text-gray-700 dark:text-gray-300 text-sm">{item.content}</p>
-          </motion.div>
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {policyItems.map((item, index) => (
+            <motion.div
+              key={index}
+              className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow hover:shadow-lg transition"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 + index * 0.15 }}
+              whileHover={{ scale: 1.03 }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                {item.icon}
+                <h2 className="font-semibold text-lg">{item.title}</h2>
+              </div>
+              <p className="text-gray-700 dark:text-gray-300 text-sm">{item.content}</p>
+            </motion.div>
+          ))}
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

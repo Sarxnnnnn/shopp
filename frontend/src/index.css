@@ -2,28 +2,157 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ตั้งค่า Theme พื้นฐาน */
 body {
-  @apply bg-white text-black transition-colors duration-300;
+  @apply bg-white text-black;
+  transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
 }
 
+/* ตั้งค่า Dark Mode */
 .dark body {
   @apply bg-black text-white;
 }
 
-html {
-  transition: background-color 0.3s ease, color 0.3s ease;
+/* ตั้งค่าการเปลี่ยน transition ของทุกองค์ประกอบ */
+*, *::before, *::after {
+  transition: background-color 0.5s ease-in-out,
+              border-color 0.5s ease-in-out,
+              color 0.5s ease-in-out,
+              box-shadow 0.5s ease-in-out;
 }
+
+/* แอนิเมชัน */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
+
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(20px); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes expandWidth {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes scrollText {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
 .animate-fade-in {
   animation: fade-in 0.5s ease-out both;
 }
+
 .animate-fade-in-up {
   animation: fade-in-up 0.6s ease-out both;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-expandWidth {
+  animation: expandWidth 0.3s ease-in-out;
+  transform-origin: left;
+}
+
+.animate-scrollText {
+  animation: scrollText 20s linear infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 3s linear infinite;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-enter {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.tab-content-enter {
+  animation: fadeInScale 0.3s ease-out;
+}
+
+/* การเปลี่ยนสีพื้นหลังและข้อความ */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Add smooth scrolling to the whole admin panel */
+.admin-panel {
+  scroll-behavior: smooth;
+}
+
+/* Transition for all interactive elements */
+button, a, input, select {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Hover effect for cards */
+.hover-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.1);
 }

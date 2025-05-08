@@ -1,45 +1,33 @@
 // src/pages/admin/ProtectedAdminRoute.jsx
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
-import axios from 'axios';
 
 const ProtectedAdminRoute = ({ children }) => {
-  const { admin, setAdmin } = useAdminAuth();
+  const { admin, loading: authLoading } = useAdminAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (admin && admin.token) {
-        try {
-          const response = await axios.get('/api/check-admin', {
-            headers: { Authorization: `Bearer ${admin.token}` }
-          });
-
-          if (response.data.isAdmin) {
-            setAdmin({ ...admin, role: 'admin' });
-          } else {
-            setAdmin(null);  // ถ้าผู้ใช้ไม่ใช่ admin ให้ลบข้อมูล admin
-          }
-        } catch (error) {
-          console.error("Error checking admin status", error);
-          setAdmin(null); // หากเกิดข้อผิดพลาดจะต้องรีเซ็ต admin
-        }
+      if (admin?.token) {
+        setIsAuthenticated(true);
       } else {
-        setAdmin(null);  // ถ้าไม่มี admin หรือ token
+        setIsAuthenticated(false);
       }
       setLoading(false);
     };
 
     checkAdminStatus();
-  }, [admin, setAdmin]);
+  }, [admin]);
 
-  if (loading) {
-    return <div>Loading...</div>;  // ระหว่างที่กำลังโหลดข้อมูลจาก API
+  if (authLoading || loading) {
+    return <div>Loading...</div>;
   }
 
-  if (!admin || admin.role !== 'admin') {
-    return <Navigate to="/admin/login" replace />;
+  if (!admin) {
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   return children;

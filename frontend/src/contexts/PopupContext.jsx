@@ -1,4 +1,3 @@
-// src/contexts/PopupContext.jsx
 import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 
 const PopupContext = createContext();

@@ -3,148 +3,216 @@ import ProductCard from '../components/ProductCard';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { useCart } from '../contexts/CartContext';
 import { motion } from 'framer-motion';
+import { fetchWithAuth, fetchProducts as fetchProductsApi, fetchNormalProducts, fetchPopularProducts, fetchNewProducts } from '../utils/api';
+import { useSiteSettings } from '../contexts/SiteSettingsContext';
 
 const HomePage = () => {
-  const { isLoggedIn } = useAuth();
-  const { addToCart } = useCart();
+  const { isLoggedIn, user } = useAuth();
   const { showNotification } = useNotification();
+  const { settings } = useSiteSettings();
 
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortMode, setSortMode] = useState(0);
+  const [sortType, setSortType] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [normalProducts, setNormalProducts] = useState([]);
+  const [popularProducts, setPopularProducts] = useState([]);
+  const [newProducts, setNewProducts] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:3000/api/products') // เปลี่ยน URL ถ้า deploy
-      .then(res => res.json())
-      .then(response => {
-        // ตรวจสอบว่า response.data เป็น array หรือไม่
-        if (Array.isArray(response.data)) {
-          setProducts(response.data);
-        } else {
-          console.error('ข้อมูลที่ได้รับไม่เป็น array:', response.data);
-        }
-      })
-      .catch(err => {
+    const loadProducts = async () => {
+      try {
+        const [normalData, popularData, newData] = await Promise.all([
+          fetchNormalProducts(),
+          fetchPopularProducts(),
+          fetchNewProducts()
+        ]);
+
+        if (normalData?.success) setNormalProducts(normalData.data);
+        if (popularData?.success) setPopularProducts(popularData.data);
+        if (newData?.success) setNewProducts(newData.data);
+      } catch (err) {
         console.error('Error fetching products:', err);
-        // กำหนดค่าผลลัพธ์เมื่อเกิดข้อผิดพลาด เช่น กำหนดให้แสดงสินค้าจาก cache หรือแสดงข้อความแสดงข้อผิดพลาด
-        setProducts([]);
-      });
+      }
+    };
+    loadProducts();
   }, []);
 
-  const toggleSortMode = () => setSortMode((sortMode + 1) % 3);
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const data = await fetchProductsApi(user?.token);
+        if (data?.success) {
+          setProducts(data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setProducts([]);
+      }
+    };
+    loadProducts();
+  }, [user]);
 
-  const getSortLabel = () => {
-    if (sortMode === 0) return 'ไม่จัดเรียง';
-    if (sortMode === 1) return 'เรียงตามชื่อ';
-    return 'เรียงตามราคา';
+  const handleSortChange = () => {
+    setSortType((prev) => (prev + 1) % 3);
   };
 
+  const sortLabel =
+    sortType === 1 ? 'เรียงตามชื่อ' : sortType === 2 ? 'เรียงตามราคา' : 'ไม่จัดเรียง';
+
   const filterAndSort = (products) => {
-    // ตรวจสอบว่า products เป็น array หรือไม่
     if (!Array.isArray(products)) {
-      console.error('products ไม่เป็น array:', products);
       return [];
     }
 
-    // กรองสินค้าตามคำค้นหา
     let filtered = products.filter((p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // จัดเรียงสินค้า
-    if (sortMode === 1) {
+    if (sortType === 1) {
       filtered.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortMode === 2) {
+    } else if (sortType === 2) {
       filtered.sort((a, b) => a.price - b.price);
     }
 
     return filtered;
   };
 
-  const handleAddToCart = (product) => {
-    if (!isLoggedIn) {
-      showNotification('กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้าลงตะกร้า', 'error');
-      return;
-    }
-    addToCart(product);
-    showNotification('เพิ่มสินค้าลงตะกร้าเรียบร้อยแล้ว', 'success');
-  };
-
   return (
-    <div className="min-h-screen flex flex-col items-center bg-gray-100 dark:bg-gray-900 text-black dark:text-white px-4 pt-24 md:ml-60">
-
-      {/* Banner */}
+    <div className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900 text-black dark:text-white">
+      {/* Welcome Banner */}
       <motion.div
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative h-60 w-full rounded-md overflow-hidden shadow mb-8"
-        style={{ backgroundImage: "url('/images/welcome-bg.jpg')" }}
+        className="relative h-[300px] w-full rounded-xl overflow-hidden shadow-lg mb-8"
       >
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col justify-center items-center text-center text-white px-4">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            ยินดีต้อนรับสู่ <span className="text-yellow-400">SARXNNN SHOP</span>
+        {/* Banner Background */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ 
+            backgroundImage: `url(${settings?.banner_url || '/default-banner.jpg'})`,
+            backgroundColor: settings?.theme_color || '#FFB547' 
+          }}
+        />
+        
+        {/* Dark Overlay with Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
+
+        {/* Content */}
+        <div className="relative h-full flex flex-col justify-center items-center text-center px-4 z-10">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            ยินดีต้อนรับสู่{' '}
+            <span 
+              style={{ color: settings?.theme_color || '#FFB547' }}
+              className="drop-shadow-lg"
+            >
+              {settings?.website_name || 'Shopping Website'}
+            </span>
           </h2>
-          <p>เว็บไซต์สำหรับขายไอเทมเกม เติมเงิน และบริการอื่น ๆ อย่างปลอดภัย รวดเร็ว และสะดวก</p>
+          
+          <p className="text-lg md:text-xl text-white/90 max-w-2xl">
+            {settings?.site_description || ''}
+          </p>
         </div>
       </motion.div>
 
       {/* Notification Bar */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="w-full border border-black dark:border-white py-2 px-4 mb-8 rounded-md shadow"
-      >
-        <marquee behavior="scroll" direction="left" scrollamount="6" className="text-black dark:text-yellow-300">
-          🎉 โปรโมชั่นเดือนนี้! เติมเงินรับโบนัสเพิ่ม 10%! 🛠️ ระบบอัตโนมัติ เปิดให้บริการ 24 ชม. 📦 สินค้าใหม่อัปเดตทุกสัปดาห์!
-        </marquee>
-      </motion.div>
+      {settings?.announcement && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="relative w-full mb-8 p-[1px] rounded-lg overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 animate-gradient" />
+          <div className="relative bg-white/95 dark:bg-gray-800/95 rounded-lg py-3.5 backdrop-blur-sm">
+            <div className="overflow-hidden">
+              <div 
+                className="whitespace-nowrap text-gray-900 dark:text-gray-100 text-base font-medium"
+                style={{
+                  animation: 'scroll 30s linear infinite',
+                  paddingLeft: '100%',
+                  paddingRight: '2rem',
+                  display: 'inline-block'
+                }}
+              >
+                {settings.announcement}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Search and Sort */}
       <div className="w-full flex flex-col md:flex-row md:justify-between items-center gap-4 mb-8">
         <input
           type="text"
           placeholder="🔍 ค้นหาสินค้า..."
-          className="w-full md:w-1/2 px-4 py-2 rounded-full border dark:bg-gray-700 shadow-sm"
+          className="w-full md:w-1/2 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button
-          onClick={toggleSortMode}
-          className="px-4 py-2 rounded-md bg-yellow-400 text-black font-semibold shadow hover:bg-yellow-500"
+        <motion.button
+          onClick={handleSortChange}
+          whileTap={{ scale: 0.95 }}
+          className="px-4 py-2 rounded-md bg-yellow-400 text-black font-semibold shadow hover:bg-yellow-500 transition-all"
         >
-          ⚙ {getSortLabel()}
-        </button>
+          ⚙ {sortLabel}
+        </motion.button>
       </div>
 
-      {/* Product Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 w-full">
-        {filterAndSort(products).map((product) => (
-          <ProductCard
-            key={product.id}
-            product={{
-              name: product.name,
-              price: `${product.price} บาท`,
-              image: product.image,
-              description: product.description,
-              tag: product.status === 'recommend' ? 'แนะนำ' : product.status === 'new' ? 'ใหม่' : undefined
-            }}
-            onShowDetail={() => setSelectedProduct(product)}
-            onAddToCart={() => handleAddToCart(product)}
-          />
-        ))}
-      </div>
+      {/* Popular Products Section */}
+      <section className="w-full mb-8">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">สินค้ายอดนิยม</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+          {filterAndSort(popularProducts).map((product) => (
+            <div key={product.id} className="transition-transform duration-300 hover:scale-105">
+              <ProductCard
+                product={product}
+                onShowDetail={() => setSelectedProduct(product)}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* New Products Section */}
+      <section className="w-full mb-8">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">สินค้าใหม่</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+          {filterAndSort(newProducts).map((product) => (
+            <div key={product.id} className="transition-transform duration-300 hover:scale-105">
+              <ProductCard
+                product={product}
+                onShowDetail={() => setSelectedProduct(product)}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Normal Products Section */}
+      <section className="w-full">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">สินค้าทั่วไป</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+          {filterAndSort(normalProducts).map((product) => (
+            <div key={product.id} className="transition-transform duration-300 hover:scale-105">
+              <ProductCard
+                product={product}
+                onShowDetail={() => setSelectedProduct(product)}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Modal */}
       {selectedProduct && (
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          onAddToCart={() => handleAddToCart(selectedProduct)}
         />
       )}
     </div>

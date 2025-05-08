@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const { register } = useAuth(); // เรียกฟังก์ชันจาก context
+  const { register } = useAuth(); 
   const { showNotification } = useNotification();
 
   const [username, setUsername] = useState('');
@@ -17,23 +18,44 @@ const RegisterPage = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setError('');
 
     try {
-      await register(username, email, password); // ✅ เรียก context register
+      await register(username, email, password); 
       showNotification(`สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ${username}`, 'success');
-      navigate('/'); // นำทางหลังสมัครเสร็จ
+      navigate('/'); 
     } catch (err) {
-      console.error(err);
-      setError(err?.response?.data?.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
+      console.error('Registration error:', err);
+      const errorMessage = err.message || err.response?.data?.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก';
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-black dark:text-white px-4">
-      <div className="md:ml-[15rem] w-full max-w-md bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 space-y-6">
-        <h2 className="text-2xl font-bold text-center">สมัครสมาชิก</h2>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="md:ml-[15rem] w-full max-w-md bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 space-y-6"
+      >
+        <motion.h2
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-2xl font-bold text-center"
+        >
+          สมัครสมาชิก
+        </motion.h2>
 
-        <form onSubmit={handleRegister} className="space-y-4">
+        <motion.form
+          onSubmit={handleRegister}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="space-y-4"
+        >
           <input
             type="text"
             placeholder="ชื่อผู้ใช้"
@@ -78,7 +100,7 @@ const RegisterPage = () => {
           >
             สมัครสมาชิก
           </button>
-        </form>
+        </motion.form>
 
         <p className="text-center text-sm">
           มีบัญชีแล้ว?{' '}
@@ -86,7 +108,7 @@ const RegisterPage = () => {
             เข้าสู่ระบบ
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };

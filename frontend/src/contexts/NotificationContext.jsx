@@ -1,49 +1,49 @@
-// src/contexts/NotificationContext.jsx
-import React, { createContext, useState, useContext, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 
 export const NotificationContext = createContext();
 
-export const NotificationProvider = ({ children }) => {
-  const [notification, setNotification] = useState({ message: '', type: '' });
-  const timeoutRef = useRef(null);
+export function NotificationProvider({ children }) {
+  const [notifications, setNotifications] = useState([]);
 
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
-
-    // เคลียร์ timeout เก่าถ้ามี
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    timeoutRef.current = setTimeout(() => {
-      setNotification({ message: '', type: '' });
+  const showNotification = (message, type = 'info') => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
     }, 3000);
   };
 
-  // ล้าง timeout ตอน unmount ป้องกัน memory leak
-  useEffect(() => {
-    return () => clearTimeout(timeoutRef.current);
-  }, []);
-
   return (
-    <NotificationContext.Provider value={{ notification, showNotification }}>
+    <NotificationContext.Provider value={{ showNotification, notifications }}>
       {children}
-
-      {/* แสดงแจ้งเตือน */}
-      {notification.message && (
-        <div
-          className={`fixed top-5 right-5 z-50 px-4 py-2 rounded shadow-lg transition-all duration-300 ${
-            notification.type === 'error'
-              ? 'bg-red-500 text-white'
-              : 'bg-green-500 text-white'
-          }`}
-        >
-          {notification.message}
-        </div>
-      )}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        <AnimatePresence>
+          {notifications.map(({ id, message, type }) => (
+            <motion.div
+              key={id}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+              className={`rounded-lg p-4 flex items-center gap-3 shadow-lg ${
+                type === 'success' ? 'bg-green-500' :
+                type === 'error' ? 'bg-red-500' :
+                type === 'warning' ? 'bg-yellow-500' :
+                'bg-blue-500'
+              } text-white min-w-[300px]`}
+            >
+              {type === 'success' ? <CheckCircle className="w-5 h-5" /> :
+               type === 'error' ? <AlertCircle className="w-5 h-5" /> :
+               type === 'warning' ? <AlertTriangle className="w-5 h-5" /> :
+               <Info className="w-5 h-5" />}
+              <p className="font-medium">{message}</p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </NotificationContext.Provider>
   );
-};
+}
 
-// ✅ Custom hook ที่ควรใช้
 export const useNotification = () => useContext(NotificationContext);

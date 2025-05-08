@@ -1,7 +1,10 @@
-import React, { useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { FaFireAlt, FaStar, FaCheck, FaTags, FaTimes } from 'react-icons/fa';
-import { CartContext } from '../contexts/CartContext'; // ใช้ CartContext
-import { useAuth } from '../contexts/AuthContext'; // ใช้ AuthContext
+import { useNotification } from '../contexts/NotificationContext';
+import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth, createOrder, fetchBalance } from '../utils/api'; // Import fetchWithAuth, createOrder, and fetchBalance
+import AuthContext from '../contexts/AuthContext';
+import { useBalance } from '../contexts/BalanceContext';
 
 // 🔖 ส่วนแสดงแท็กต่าง ๆ แยกออกมาให้อ่านง่าย
 const ProductTag = ({ tag }) => {
@@ -43,17 +46,68 @@ const ProductTag = ({ tag }) => {
 };
 
 const ProductDetailModal = ({ product, onClose }) => {
-  const { user } = useAuth(); // ใช้ข้อมูลจาก AuthContext
-  const { addToCart } = useContext(CartContext); // ใช้ CartContext
+  const { user } = useContext(AuthContext);
+  const { showNotification } = useNotification();
+  const { setBalance } = useBalance();
+  const navigate = useNavigate();
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
   if (!product) return null;
 
-  const handleAddToCart = () => {
-    if (user) {
-      addToCart(product); // เพิ่มสินค้าลงตะกร้าผ่าน CartContext
-      onClose();
-    } else {
-      alert('กรุณาล็อกอินก่อนเพิ่มสินค้าลงตะกร้า');
+  const handleBuyNow = async () => {
+    try {
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      const price = Number(product.price);
+      const currentBalance = await fetchBalance(user.token);
+
+      if (currentBalance < price) {
+        showNotification(`ยอดเงินไม่เพียงพอ (ยอดเงินคงเหลือ: ${currentBalance} บาท, ราคาสินค้า: ${price} บาท) กรุณาเติมเงินที่เมนูเติมเงิน`, 'error');
+        return;
+      }
+
+      const orderData = {
+        items: [
+          {
+            productId: product.id,
+            quantity: 1,
+            price: price
+          },
+        ],
+        total: price,
+        customer_name: user.name // เพิ่มชื่อลูกค้า
+      };
+
+      await createOrder(orderData, user.token);
+        
+      // อัพเดทยอดเงินหลังซื้อสำเร็จ
+      const updatedBalanceResponse = await fetchBalance(user.token);
+      setBalance(updatedBalanceResponse.balance);
+        
+      showNotification('สั่งซื้อสำเร็จ!', 'success');
+      setShowConfirmation(true);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      if (error.message.includes('ยอดเงินในบัญชีไม่เพียงพอ')) {
+        showNotification('ยอดเงินไม่เพียงพอ กรุณาเติมเงินที่เมนูเติมเงิน', 'error');
+      } else {
+        showNotification(error.message || 'เกิดข้อผิดพลาดในการสั่งซื้อ', 'error');
+      }
     }
+  };
+
+  const goToOrderHistory = () => {
+    setShowConfirmation(false);
+    onClose();
+    navigate('/order-history');
+  };
+
+  const continueShopping = () => {
+    setShowConfirmation(false);
+    onClose();
   };
 
   return (
@@ -62,9 +116,9 @@ const ProductDetailModal = ({ product, onClose }) => {
         {/* ปุ่มปิด */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-lg"
+          className="absolute top-4 right-4 text-gray-500 hover:text-red-500 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
         >
-          <FaTimes />
+          <FaTimes className="w-6 h-6" />
         </button>
 
         {/* ชื่อสินค้าและแท็ก */}
@@ -90,21 +144,44 @@ const ProductDetailModal = ({ product, onClose }) => {
           {product.description || 'ไม่มีรายละเอียดสินค้าเพิ่มเติม'}
         </p>
 
-        {/* ปุ่มเพิ่มลงตะกร้า */}
+        {/* ปุ่มซื้อเลย - แสดงเฉพาะเมื่อสินค้าไม่หมด */}
         <div className="flex gap-3 justify-center">
-          <button
-            onClick={handleAddToCart} // ใช้ handleAddToCart
-            disabled={product.outOfStock}
-            className={`py-2 px-4 rounded-md font-semibold transition-all transform hover:scale-105 ${
-              product.outOfStock
-                ? 'bg-gray-400 text-white cursor-not-allowed'
-                : 'bg-yellow-400 hover:bg-yellow-500 text-black'
-            }`}
-          >
-            {product.outOfStock ? 'สินค้าหมด' : '🛒 เพิ่มลงตะกร้า'}
-          </button>
+          {!product.outOfStock && (
+            <button
+              onClick={handleBuyNow}
+              className="py-2 px-4 rounded-md font-semibold transition-all transform hover:scale-105 bg-yellow-400 hover:bg-yellow-500 text-black"
+            >
+              ซื้อเลย
+            </button>
+          )}
+          {product.outOfStock && (
+            <button
+              disabled
+              className="py-2 px-4 rounded-md font-semibold bg-gray-400 text-white cursor-not-allowed"
+            >
+              สินค้าหมด
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Confirmation Popup */}
+      {showConfirmation && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 text-black dark:text-white rounded-xl p-4 w-full max-w-sm shadow-xl">
+            <h2 className="text-lg font-semibold mb-4">สั่งซื้อสำเร็จ!</h2>
+            <p className="mb-4">คุณต้องการทำอะไรต่อ?</p>
+            <div className="flex justify-around">
+              <button onClick={goToOrderHistory} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                ดูประวัติการสั่งซื้อ
+              </button>
+              <button onClick={continueShopping} className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                เลือกซื้อสินค้าอื่น ๆ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

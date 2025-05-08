@@ -1,11 +1,10 @@
-import React, { useContext, useState, useEffect } from 'react';
-import { CartContext } from '../contexts/CartContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useNotification } from '../contexts/NotificationContext';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import ProductCard from '../components/ProductCard';
 import ProductDetailModal from '../components/ProductDetailModal';
-import { motion } from 'framer-motion';
-import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { fetchPopularProducts } from '../utils/api';
 
 // แปลงราคาจาก string เป็น number
 const extractNumber = (priceString) =>
@@ -13,66 +12,38 @@ const extractNumber = (priceString) =>
 
 const PopularProductPage = () => {
   const { isLoggedIn } = useAuth();
-  const { addToCart } = useContext(CartContext);
   const { showNotification } = useNotification();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortType, setSortType] = useState(0); // 0 = default, 1 = name, 2 = price
-  const [popularProductCategories, setPopularProductCategories] = useState([]);
+  const [sortType, setSortType] = useState(0);
+  const [products, setProducts] = useState([]);
 
-  // ดึงข้อมูลสินค้าจาก API
   useEffect(() => {
-    const fetchPopularProducts = async () => {
+    const loadProducts = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products/popular`);
-        const formattedCategories = res.data.map((category) => ({
-          ...category,
-          products: category.products.map((product) => ({
-            ...product,
-            price: `${product.price} บาท`,
-            outOfStock: product.stock <= 0,
-            tag: 'แนะนำ', // สามารถปรับให้ตรงกับข้อมูลจาก API
-          })),
-        }));
-        setPopularProductCategories(formattedCategories);
+        const response = await fetchPopularProducts();
+        if (response.success) {
+          setProducts(response.data);
+        }
       } catch (error) {
-        showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า', 'error');
-        console.error('Error loading popular products:', error);
+        showNotification('เกิดข้อผิดพลาดในการโหลดสินค้า', 'error');
       }
     };
-
-    fetchPopularProducts();
+    loadProducts();
   }, [showNotification]);
 
-  // เพิ่มสินค้าลงตะกร้า
-  const handleAddToCart = (product) => {
-    if (!isLoggedIn) {
-      showNotification('กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้า', 'error');
-      return;
-    }
-
-    if (product.outOfStock) {
-      showNotification(`${product.name} สินค้าหมดแล้ว`, 'error');
-      return;
-    }
-
-    addToCart(product);
-    showNotification(`เพิ่ม ${product.name} ลงในตะกร้าแล้ว`, 'success');
-  };
-
-  // กรองและเรียงสินค้า
-  const getSortedFilteredProducts = (products) => {
-    let filtered = products.filter((p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
+  const getSortedFilteredProducts = () => {
+    let filtered = Array.isArray(products)
+      ? products.filter((p) =>
+          p.name.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : [];
     if (sortType === 1) {
       filtered.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortType === 2) {
       filtered.sort((a, b) => extractNumber(a.price) - extractNumber(b.price));
     }
-
     return filtered;
   };
 
@@ -83,75 +54,73 @@ const PopularProductPage = () => {
   const sortLabel =
     sortType === 1 ? 'เรียงตามชื่อ' : sortType === 2 ? 'เรียงตามราคา' : 'ไม่จัดเรียง';
 
+  const filteredProducts = getSortedFilteredProducts();
+
   return (
-    <div className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900 text-black dark:text-white transition-all">
-      {/* Search + Sort */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
+    >
+      <motion.div 
+        initial={{ y: -20 }}
+        animate={{ y: 0 }}
         className="w-full flex flex-col md:flex-row md:justify-between items-center gap-4 mb-8"
       >
-        <input
+        <motion.input
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
           type="text"
           placeholder="🔍 ค้นหาสินค้า..."
           className="w-full md:w-1/2 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button
+        <motion.button
+          initial={{ x: 20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.3 }}
           onClick={handleSortChange}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           className="px-4 py-2 rounded-md bg-yellow-400 text-black font-semibold shadow hover:bg-yellow-500 transition-all"
         >
           ⚙ {sortLabel}
-        </button>
+        </motion.button>
       </motion.div>
 
-      {/* แสดงสินค้า */}
-      {popularProductCategories.map((category, index) => {
-        const filteredProducts = getSortedFilteredProducts(category.products);
-        if (filteredProducts.length === 0) return null;
-
-        return (
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4"
+      >
+        {filteredProducts.map((product, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.2 }}
-            className="mb-10"
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+            whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+            whileTap={{ scale: 0.95 }}
+            className="transform"
           >
-            <h3 className="text-xl font-bold mb-4 border-b border-yellow-400 pb-1">
-              {category.name}
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredProducts.map((product, pIndex) => (
-                <motion.div
-                  key={pIndex}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: pIndex * 0.1 }}
-                >
-                  <ProductCard
-                    product={product}
-                    onShowDetail={() => setSelectedProduct(product)}
-                    onAddToCart={() => handleAddToCart(product)}
-                  />
-                </motion.div>
-              ))}
-            </div>
+            <ProductCard
+              product={product}
+              onShowDetail={() => setSelectedProduct(product)}
+            />
           </motion.div>
-        );
-      })}
+        ))}
+      </motion.div>
 
-      {/* Modal รายละเอียดสินค้า */}
       {selectedProduct && (
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          onAddToCart={() => handleAddToCart(selectedProduct)}
         />
       )}
-    </div>
+    </motion.div>
   );
 };
 

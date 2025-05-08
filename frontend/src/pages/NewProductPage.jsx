@@ -1,56 +1,36 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import ProductDetailModal from '../components/ProductDetailModal';
-import { CartContext } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import { fetchNewProducts } from '../utils/api';
 
 const extractNumber = (priceString) =>
   parseInt(priceString.replace(/[^\d]/g, '')) || 0;
 
 const NewProductPage = () => {
   const { isLoggedIn } = useAuth();
-  const { addToCart } = useContext(CartContext);
   const { showNotification } = useNotification();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortType, setSortType] = useState(0); // 0: Default, 1: Name, 2: Price
+  const [sortType, setSortType] = useState(0); 
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const loadProducts = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products`);
-        const formattedProducts = res.data.map((p) => ({
-          ...p,
-          price: `${p.price} บาท`,
-          outOfStock: p.stock <= 0,
-          tag: 'ใหม่', // ถ้ามีระบบ tag จริงค่อยแก้ทีหลัง
-        }));
-        setProducts(formattedProducts);
+        const response = await fetchNewProducts();
+        if (response.success) {
+          setProducts(response.data);
+        }
       } catch (error) {
         showNotification('เกิดข้อผิดพลาดในการโหลดสินค้า', 'error');
-        console.error('Error loading products:', error);
       }
     };
-    fetchProducts();
+    loadProducts();
   }, [showNotification]);
-
-  const handleAddToCart = (product) => {
-    if (!isLoggedIn) {
-      showNotification('กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้า', 'error');
-      return;
-    }
-    if (product.outOfStock) {
-      showNotification(`${product.name} สินค้าหมดแล้ว`, 'error');
-      return;
-    }
-    addToCart(product);
-    showNotification(`เพิ่ม ${product.name} ลงในตะกร้าแล้ว`, 'success');
-  };
 
   const getSortedFilteredProducts = () => {
     let filtered = products.filter((p) =>
@@ -88,12 +68,13 @@ const NewProductPage = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button
+        <motion.button
           onClick={handleSortChange}
+          whileTap={{ scale: 0.95 }}
           className="px-4 py-2 rounded-md bg-yellow-400 text-black font-semibold shadow hover:bg-yellow-500 transition-all"
         >
           ⚙ {sortLabel}
-        </button>
+        </motion.button>
       </motion.div>
 
       <motion.div
@@ -118,7 +99,6 @@ const NewProductPage = () => {
               <ProductCard
                 product={product}
                 onShowDetail={() => setSelectedProduct(product)}
-                onAddToCart={() => handleAddToCart(product)}
               />
             </motion.div>
           ))}
@@ -129,7 +109,6 @@ const NewProductPage = () => {
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          onAddToCart={() => handleAddToCart(selectedProduct)}
         />
       )}
     </div>

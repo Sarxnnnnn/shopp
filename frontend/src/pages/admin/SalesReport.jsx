@@ -11,8 +11,28 @@ export default function SalesReport() {
   useEffect(() => {
     const fetchSalesData = async () => {
       try {
-        const response = await axios.get('/api/sales'); // ใช้ API ที่คุณมี
-        setSalesData(response.data); // สมมุติว่า API คืนค่าข้อมูลยอดขาย
+        const adminToken = localStorage.getItem('adminToken');
+        const response = await axios.get('http://localhost:3000/api/admin/stats', {
+          headers: {
+            Authorization: `Bearer ${adminToken}`
+          }
+        });
+        
+        if (response.data?.data?.salesByDate) {
+          // Filter out zero sales and sort by date
+          const filteredData = response.data.data.salesByDate
+            .filter(sale => sale.revenue > 0)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+          
+          setSalesData(filteredData.map(sale => ({
+            date: new Date(sale.date).toLocaleDateString('th-TH', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            }),
+            total: sale.revenue
+          })));
+        }
       } catch (error) {
         console.error('Error fetching sales data:', error);
       } finally {
@@ -21,6 +41,10 @@ export default function SalesReport() {
     };
 
     fetchSalesData();
+    
+    // Auto refresh every 5 minutes
+    const interval = setInterval(fetchSalesData, 300000);
+    return () => clearInterval(interval);
   }, []);
   
   // คำนวณยอดขายรวม
@@ -38,7 +62,7 @@ export default function SalesReport() {
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl shadow border border-gray-200 dark:border-zinc-800">
         <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">ยอดขายรวมสัปดาห์นี้</h2>
         <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-          ฿{totalSales.toLocaleString()}
+          ฿{Number(totalSales).toLocaleString('th-TH')}
         </p>
       </div>
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl shadow border border-gray-200 dark:border-zinc-800">

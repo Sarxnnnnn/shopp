@@ -1,62 +1,133 @@
-// src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-export const AuthContext = createContext();
+const AuthContext = createContext();
 
+// สร้าง instance ของ axios พร้อมการตั้งค่าเริ่มต้น
+const axiosInstance = axios.create({
+  baseURL: 'http://localhost:3000',
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+// เพิ่ม interceptor สำหรับแนบ token ในทุกคำขอ
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('userToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Context Provider สำหรับการจัดการ Authentication
 export const AuthProvider = ({ children }) => {
+  const navigate = useNavigate();
+  const location = useLocation(); 
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // โหลดข้อมูลผู้ใช้จาก token ถ้ามี
   useEffect(() => {
-    const token = localStorage.getItem('userToken');
-
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      axios.get('http://localhost:5000/api/auth/me')
-        .then((res) => {
-          setUser(res.data.user || res.data); // แล้วแต่ API ว่า response ยังไง
-          setIsLoggedIn(true);
-        })
-        .catch((err) => {
-          console.error('Token invalid or expired:', err);
-          logout(); // clear ทุกอย่างถ้า token ไม่ valid
-        });
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    if (token && savedUser) {
+      try {
+        const userData = JSON.parse(savedUser);
+        setUser({ ...userData, token });
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        logout();
+      }
     }
   }, []);
 
-  const login = async (email, password, rememberMe = false) => {
-    const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
-    const { user, token } = res.data;
+  // ตรวจสอบ token และดึงข้อมูลผู้ใช้เมื่อ component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('userToken') || localStorage.getItem('token');
+      
+      if (!token) {
+        setUser(null);
+        setIsLoggedIn(false);
+        setLoading(false);
+        return;
+      }
 
-    setUser(user);
-    setIsLoggedIn(true);
+      try {
+        const response = await axiosInstance.get('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        setUser({ ...response.data, token });
+        setIsLoggedIn(true);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('token');
+        setUser(null);
+        setIsLoggedIn(false);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    checkAuth();
+  }, []);
 
-    if (rememberMe) {
+  const login = async (email, password) => {
+    try {
+      const response = await axiosInstance.post('/api/auth/login', { email, password });
+      const { user, token } = response.data;
+
       localStorage.setItem('userToken', token);
+      localStorage.setItem('token', token);
+      setUser({ ...user, token });
+      setIsLoggedIn(true);
+
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        throw new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      }
+      throw new Error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
     }
-  };
-
-  const register = async (name, email, password) => {
-    const res = await axios.post('http://localhost:5000/api/auth/register', { name, email, password });
-    const { user, token } = res.data;
-
-    setUser(user);
-    setIsLoggedIn(true);
-
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    localStorage.setItem('userToken', token);
   };
 
   const logout = () => {
     setUser(null);
     setIsLoggedIn(false);
     localStorage.removeItem('userToken');
-    delete axios.defaults.headers.common['Authorization'];
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  };
+
+  const register = async (name, email, password) => {
+    try {
+      const res = await axiosInstance.post('/api/auth/register', {
+        name,
+        email,
+        password,
+      });
+
+      if (res.data.success) {
+        const { user, token } = res.data;
+        setUser(user);
+        setIsLoggedIn(true);
+        localStorage.setItem('userToken', token);
+        localStorage.setItem('token', token);
+        return res.data;
+      } else {
+        throw new Error(res.data.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration failed:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
   };
 
   const updateUserInfo = (newData) => {
@@ -71,11 +142,12 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         isLoggedIn,
+        loading,
         login,
         register,
         logout,
         updateUserInfo,
-        setUser, // <-- สำคัญ! ให้ LoginPage ใช้ setUser หลังรับ response API
+        setUser,
       }}
     >
       {children}
@@ -84,3 +156,5 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+export default AuthContext;

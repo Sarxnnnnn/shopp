@@ -1,31 +1,33 @@
 // src/pages/admin/ProtectedAdminRoute.jsx
-import React, { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import { useAdminAuth } from "../../contexts/AdminAuthContext"; // ใช้ AdminAuthContext
-import axios from "axios";
+import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import axios from 'axios';
 
+// คอมโพเนนต์ป้องกันการเข้าถึงหน้าแอดมิน
 const ProtectedAdminRoute = ({ children }) => {
-  const { admin, loading: authLoading, setAdmin } = useAdminAuth(); // ใช้ useAdminAuth สำหรับตรวจสอบแอดมิน
+  const { admin, loading: authLoading } = useAdminAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // ตรวจสอบสถานะแอดมินเมื่อเข้าหน้า
   useEffect(() => {
     const checkAdminStatus = async () => {
-      // หากไม่มี token หรือไม่ใช่แอดมินให้ข้ามการเรียก API
-      if (!admin) {
+      if (!admin?.token) {
+        setIsAuthenticated(false);
         setLoading(false);
         return;
       }
 
       try {
-        const response = await axios.get("/api/check-admin", {
-          headers: { Authorization: `Bearer ${admin.token}` },
+        const response = await axios.get('/api/admin/check-admin', {
+          headers: { Authorization: `Bearer ${admin.token}` }
         });
 
-        const role = response.data.isAdmin ? "admin" : "user";
-        setAdmin((prev) => ({ ...prev, role }));
+        setIsAuthenticated(response.data.isAdmin);
       } catch (error) {
         console.error("Error checking admin status:", error);
-        setAdmin(null); // ล้างสถานะ admin
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
@@ -34,13 +36,18 @@ const ProtectedAdminRoute = ({ children }) => {
     if (!authLoading) {
       checkAdminStatus();
     }
-  }, [admin, setAdmin, authLoading]);
+  }, [admin?.token, authLoading]);
 
-  if (loading) return <div>Loading...</div>;
+  // แสดงผลตามสถานะการยืนยันตัวตน
+  if (!admin?.token || (!isAuthenticated && !loading)) {
+    return <Navigate to="/admin/login" replace />;
+  }
 
-  const isAdmin = admin?.role === "admin";
+  if (loading || authLoading) {
+    return <div>Loading...</div>;
+  }
 
-  if (!isAdmin) {
+  if (!isAuthenticated || admin?.role !== 'admin') {
     return <Navigate to="/admin/login" replace />;
   }
 

@@ -1,40 +1,30 @@
-import React, { useContext, useEffect } from 'react';
-import { NotificationContext } from '../contexts/NotificationContext';
+import React from 'react';
+import { useNotification } from '../contexts/NotificationContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ToastNotification = () => {
-  const { notification, clearNotification } = useContext(NotificationContext);
-
-  // ถ้าไม่มีข้อความจาก notification ไม่แสดง
-  if (!notification.message) return null;
-
-  // ฟังก์ชันเพื่อกำหนดสีตามประเภทของการแจ้งเตือน
-  const getColor = (type) => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-500';
-      case 'error':
-        return 'bg-red-500';
-      case 'warning':
-        return 'bg-yellow-400 text-black';
-      default:
-        return 'bg-gray-700';
-    }
-  };
-
-  // ปิดการแจ้งเตือนหลังจากแสดงไป 5 วินาที
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      clearNotification(); // ล้างการแจ้งเตือน
-    }, 5000);
-
-    return () => clearTimeout(timer); // ลบ timer เมื่อคอมโพเนนต์ถูกยกเลิก
-  }, [notification, clearNotification]);
+  const { notifications } = useNotification();
 
   return (
-    <div
-      className={`fixed top-6 right-6 z-50 px-4 py-2 rounded-md shadow-md text-white text-sm font-medium transition-opacity duration-300 ${getColor(notification.type)}`}
-    >
-      {notification.message}
+    <div className="fixed top-4 right-4 z-50 space-y-2">
+      <AnimatePresence>
+        {notifications?.map((notification) => (
+          <motion.div
+            key={notification.id}
+            initial={{ opacity: 0, y: -100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -100 }}
+            className={`rounded-lg p-4 flex items-center gap-3 shadow-lg ${
+              notification.type === 'success' ? 'bg-green-500' :
+              notification.type === 'error' ? 'bg-red-500' :
+              notification.type === 'warning' ? 'bg-yellow-500' :
+              'bg-blue-500'
+            } text-white min-w-[300px]`}
+          >
+            {notification.message}
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 };
