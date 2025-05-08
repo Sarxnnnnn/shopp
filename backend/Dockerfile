@@ -1,6 +1,6 @@
 FROM node:18
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY package*.json ./
 
@@ -8,8 +8,11 @@ RUN npm install
 
 COPY . .
 
+ENV NODE_ENV=production
 ENV PORT=3000
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+RUN chmod +x ./start.sh
+
+CMD ["./start.sh"]
