@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReCAPTCHA from "react-google-recaptcha";
 
 const AdminLoginPage = () => {
   const { login, admin } = useAdminAuth();
@@ -12,6 +13,7 @@ const AdminLoginPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const recaptchaRef = useRef(null);
 
   useEffect(() => {
     // Check if already logged in
@@ -26,6 +28,13 @@ const AdminLoginPage = () => {
     setIsLoading(true);
     
     try {
+      const recaptchaValue = recaptchaRef.current.getValue();
+      if (!recaptchaValue) {
+        setError('กรุณายืนยันตัวตนโดยการคลิกที่ reCAPTCHA');
+        setIsLoading(false);
+        return;
+      }
+
       await login(email, password);
       if (remember) {
         localStorage.setItem('adminEmail', email);
@@ -36,13 +45,15 @@ const AdminLoginPage = () => {
         navigate('/admin/dashboard', { replace: true });
       }, 1000);
     } catch (err) {
+      console.error('Admin login error:', err);
       setIsLoading(false);
-      setError(err.response?.data?.message || 'เข้าสู่ระบบไม่สำเร็จ');
+      setError('เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      recaptchaRef.current.reset();
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen flex items-start justify-center bg-gray-100 dark:bg-gray-900 pt-28"> {/* เปลี่ยนจาก pt-32 เป็น pt-28 */}
       <AnimatePresence>
         {(isLoading || isSuccess) && (
           <motion.div
@@ -141,7 +152,7 @@ const AdminLoginPage = () => {
           />
         </motion.div>
 
-        <div className="flex items-center mb-4">
+        <div className="mb-4">
           <input
             type="checkbox"
             checked={remember}
@@ -151,11 +162,22 @@ const AdminLoginPage = () => {
           <label className="text-sm">จดจำรหัสผ่าน</label>
         </div>
 
+        <div className="flex justify-center mb-6">
+          <div className="transform scale-[0.85] origin-center">
+            <ReCAPTCHA
+              ref={recaptchaRef}
+              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+              size="normal"
+              theme="light"
+            />
+          </div>
+        </div>
+
         <motion.button
           type="submit"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="w-full bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded transition"
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded transition"
         >
           เข้าสู่ระบบ
         </motion.button>

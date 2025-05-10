@@ -45,7 +45,7 @@ const SiteSettingsForm = () => {
       const response = await updateSiteSettings(admin.token, form);
       if (response.success) {
         showNotification('บันทึกการตั้งค่าเรียบร้อย', 'success');
-        loadSettings(); // Reload settings after update
+        loadSettings();
       }
     } catch (error) {
       showNotification('ไม่สามารถบันทึกการตั้งค่าได้', 'error');

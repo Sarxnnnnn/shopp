@@ -129,7 +129,8 @@ export const createOrder = async (orderData, token) => {
     body: JSON.stringify({
       items: orderData.items,
       total: orderData.total,
-      customer_name: orderData.customer_name
+      customer_name: orderData.customer_name,
+      status: 'รอดำเนินการ' // กำหนดค่า status ที่ถูกต้อง
     })
   }, token);
 };

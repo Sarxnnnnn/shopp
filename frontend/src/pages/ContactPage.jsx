@@ -1,37 +1,13 @@
 import React, { useState } from 'react';
-import { Phone, Mail, FileText, MessageSquare, Facebook, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { usePageContent } from '../contexts/PageContentContext';
+import { useNotification } from "../contexts/NotificationContext";
 import axios from 'axios';
-
-// 🔸 ข้อมูลช่องทางการติดต่อ
-const contactItems = [
-  {
-    icon: <Phone className="w-6 h-6 text-yellow-500" />,
-    title: "โทรศัพท์",
-    text: "012-345-6789",
-    description: "ติดต่อได้ในเวลาทำการ"
-  },
-  {
-    icon: <Mail className="w-6 h-6 text-yellow-500" />,
-    title: "อีเมล",
-    text: "support@example.com",
-    description: "ตอบกลับภายใน 24 ชั่วโมง"
-  },
-  {
-    icon: <MessageSquare className="w-6 h-6 text-yellow-500" />,
-    title: "Line Official",
-    text: "@yourlineid",
-    description: "ติดต่อได้ตลอด 24 ชั่วโมง"
-  },
-  {
-    icon: <Facebook className="w-6 h-6 text-yellow-500" />,
-    title: "Facebook",
-    text: "facebook.com/yourpage",
-    description: "ติดตามข่าวสารและโปรโมชั่น"
-  }
-];
+import { DynamicIcon } from "../components/DynamicIcon";
 
 const ContactPage = () => {
+  const { pageContents, pageSections, loading } = usePageContent('contact');
+  const { showNotification } = useNotification();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -60,35 +36,33 @@ const ContactPage = () => {
     <div className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto space-y-6">
         <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
-          ช่องทางการติดต่อ
+          {pageContents?.title}
         </h1>
 
-        {/* Contact Grid */}
+        <div className="prose dark:prose-invert max-w-none mb-8">
+          {pageContents?.content}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          {contactItems.map((item, index) => (
+          {pageSections?.map((section, index) => (
             <motion.div
-              key={index}
-              className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow flex items-start gap-4 hover:shadow-lg transition-all"
+              key={section.section_key}
+              className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow flex items-start gap-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
             >
-              <div className="bg-yellow-100 dark:bg-yellow-900/20 p-3 rounded-lg">
-                {item.icon}
+              <div className="bg-primary/10 p-3 rounded-lg">
+                <DynamicIcon name={section.icon} className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
-                <p className="text-yellow-500 font-medium">{item.text}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {item.description}
-                </p>
+                <h3 className="font-semibold text-lg mb-1">{section.title}</h3>
+                <p className="text-primary">{section.content}</p>
               </div>
             </motion.div>
           ))}
         </div>
 
-        {/* 🔹 ฟอร์มการติดต่อ */}
         <div className="mt-10 bg-white dark:bg-gray-800 p-6 rounded-xl shadow">
           <h2 className="text-xl font-bold text-yellow-500 mb-4">ส่งข้อความ</h2>
 

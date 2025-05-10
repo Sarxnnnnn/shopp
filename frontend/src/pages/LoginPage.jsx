@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import ReCAPTCHA from "react-google-recaptcha";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -16,21 +17,30 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const recaptchaRef = useRef(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
+    
     try {
+      const recaptchaValue = recaptchaRef.current.getValue();
+      if (!recaptchaValue) {
+        showNotification('กรุณายืนยันตัวตนโดยการคลิกที่ reCAPTCHA', 'error');
+        return;
+      }
+
       await login(email, password, rememberMe);
       const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+      console.error('Login error:', err);
+      setError('เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      recaptchaRef.current.reset();
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-black dark:text-white px-4">
+    <div className="min-h-screen flex items-start justify-center bg-gray-100 dark:bg-gray-900 text-black dark:text-white px-4 pt-28"> {/* เปลี่ยนจาก pt-32 เป็น pt-28 */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -95,6 +105,17 @@ const LoginPage = () => {
           {error && (
             <div className="text-red-500 text-sm text-center">{error}</div>
           )}
+
+          <div className="flex justify-center mb-6">
+            <div className="transform scale-[0.85] origin-center">
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                size="normal"
+                theme="light"
+              />
+            </div>
+          </div>
 
           <button
             type="submit"

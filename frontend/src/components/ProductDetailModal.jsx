@@ -1,10 +1,11 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { FaFireAlt, FaStar, FaCheck, FaTags, FaTimes } from 'react-icons/fa';
 import { useNotification } from '../contexts/NotificationContext';
-import { useNavigate } from 'react-router-dom';
 import { fetchWithAuth, createOrder, fetchBalance } from '../utils/api'; // Import fetchWithAuth, createOrder, and fetchBalance
 import AuthContext from '../contexts/AuthContext';
 import { useBalance } from '../contexts/BalanceContext';
+import ConfirmationModal from './ConfirmationModal';
+import PostPurchaseModal from './PostPurchaseModal';
 
 // 🔖 ส่วนแสดงแท็กต่าง ๆ แยกออกมาให้อ่านง่าย
 const ProductTag = ({ tag }) => {
@@ -49,18 +50,38 @@ const ProductDetailModal = ({ product, onClose }) => {
   const { user } = useContext(AuthContext);
   const { showNotification } = useNotification();
   const { setBalance } = useBalance();
-  const navigate = useNavigate();
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [showPostPurchase, setShowPostPurchase] = useState(false);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user || !product?.id) return;
+      try {
+        const response = await fetchWithAuth(`/api/orders/check-access/${product.id}`, user.token);
+        setHasAccess(response.hasAccess);
+      } catch (error) {
+        console.error('Error checking access:', error);
+        setHasAccess(false);
+      }
+    };
+    
+    checkAccess();
+  }, [user, product?.id]);
 
   if (!product) return null;
 
-  const handleBuyNow = async () => {
-    try {
-      if (!user) {
-        navigate('/login');
-        return;
-      }
+  const handlePurchaseClick = () => {
+    if (!user) {
+      showNotification('กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ', 'error');
+      return;
+    }
+    setShowConfirmation(true);
+  };
 
+  const handleConfirmPurchase = async () => {
+    setShowConfirmation(false);
+    try {
       const price = Number(product.price);
       const currentBalance = await fetchBalance(user.token);
 
@@ -75,20 +96,24 @@ const ProductDetailModal = ({ product, onClose }) => {
             productId: product.id,
             quantity: 1,
             price: price
-          },
+          }
         ],
         total: price,
-        customer_name: user.name // เพิ่มชื่อลูกค้า
+        customer_name: user.name
       };
 
-      await createOrder(orderData, user.token);
+      const response = await createOrder(orderData, user.token);
         
       // อัพเดทยอดเงินหลังซื้อสำเร็จ
       const updatedBalanceResponse = await fetchBalance(user.token);
       setBalance(updatedBalanceResponse.balance);
         
+      if (response.success) {
+        onClose(); 
+        setShowPostPurchase(true); 
+      }
+
       showNotification('สั่งซื้อสำเร็จ!', 'success');
-      setShowConfirmation(true);
     } catch (error) {
       console.error('Checkout error:', error);
       if (error.message.includes('ยอดเงินในบัญชีไม่เพียงพอ')) {
@@ -99,90 +124,82 @@ const ProductDetailModal = ({ product, onClose }) => {
     }
   };
 
-  const goToOrderHistory = () => {
-    setShowConfirmation(false);
-    onClose();
-    navigate('/order-history');
-  };
-
-  const continueShopping = () => {
-    setShowConfirmation(false);
-    onClose();
-  };
-
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white dark:bg-gray-800 text-black dark:text-white rounded-xl p-4 w-full max-w-sm shadow-xl relative transform transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-2xl">
-        {/* ปุ่มปิด */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-red-500 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
-        >
-          <FaTimes className="w-6 h-6" />
-        </button>
+    <>
+      <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 text-black dark:text-white rounded-xl p-6 w-full max-w-md shadow-xl relative">
+          {/* ปุ่มปิด */}
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-2 text-gray-500 hover:text-red-500"
+          >
+            <FaTimes className="w-6 h-6" />
+          </button>
 
-        {/* ชื่อสินค้าและแท็ก */}
-        <div className="flex justify-between items-start mb-3">
-          <h3 className="text-lg font-bold">{product.name}</h3>
-          <ProductTag tag={product.tag} />
-        </div>
+          {/* ชื่อสินค้า */}
+          <h3 className="text-xl font-bold mb-4">{product.name}</h3>
 
-        {/* รูปสินค้า */}
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-48 object-contain mb-3 rounded-md transition-transform duration-300"
-        />
+          {/* รูปสินค้า */}
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-48 object-contain mb-4 rounded-lg"
+          />
 
-        {/* ราคา */}
-        <p className="text-yellow-500 font-bold mb-2 text-center text-base">
-          {product.price}
-        </p>
+          {/* ราคา */}
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-2xl font-bold text-yellow-500">{product.price}</p>
+          </div>
 
-        {/* รายละเอียด */}
-        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 text-center">
-          {product.description || 'ไม่มีรายละเอียดสินค้าเพิ่มเติม'}
-        </p>
+          {/* รายละเอียด */}
+          <div className="mb-4">
+            <h4 className="font-semibold mb-2">รายละเอียด:</h4>
+            <p className="text-gray-600 dark:text-gray-300">
+              {product.description || 'ไม่มีรายละเอียดเพิ่มเติม'}
+            </p>
+          </div>
 
-        {/* ปุ่มซื้อเลย - แสดงเฉพาะเมื่อสินค้าไม่หมด */}
-        <div className="flex gap-3 justify-center">
-          {!product.outOfStock && (
-            <button
-              onClick={handleBuyNow}
-              className="py-2 px-4 rounded-md font-semibold transition-all transform hover:scale-105 bg-yellow-400 hover:bg-yellow-500 text-black"
-            >
-              ซื้อเลย
-            </button>
+          {/* ข้อมูลลับ (ถ้ามีและผู้ใช้มีสิทธิ์เข้าถึง) */}
+          {hasAccess && product.secret_data && (
+            <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded">
+              <h4 className="font-semibold mb-2">ข้อมูลสินค้า:</h4>
+              <pre className="whitespace-pre-wrap text-sm">
+                {product.secret_data}
+              </pre>
+            </div>
           )}
-          {product.outOfStock && (
+
+          {/* ปุ่มซื้อสินค้า */}
+          <div className="flex justify-center gap-3 mt-4">
             <button
-              disabled
-              className="py-2 px-4 rounded-md font-semibold bg-gray-400 text-white cursor-not-allowed"
+              onClick={handlePurchaseClick}
+              disabled={product.stock === 0}
+              className={`w-full px-4 py-2 rounded-lg ${
+                product.stock === 0
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+              }`}
             >
-              สินค้าหมด
+              {product.stock === 0 ? 'สินค้าหมด' : 'ซื้อเลย'}
             </button>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Confirmation Popup */}
-      {showConfirmation && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 text-black dark:text-white rounded-xl p-4 w-full max-w-sm shadow-xl">
-            <h2 className="text-lg font-semibold mb-4">สั่งซื้อสำเร็จ!</h2>
-            <p className="mb-4">คุณต้องการทำอะไรต่อ?</p>
-            <div className="flex justify-around">
-              <button onClick={goToOrderHistory} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                ดูประวัติการสั่งซื้อ
-              </button>
-              <button onClick={continueShopping} className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                เลือกซื้อสินค้าอื่น ๆ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        message={`คุณต้องการซื้อ ${product.name} ในราคา ฿${product.price} ใช่หรือไม่?`}
+        onConfirm={handleConfirmPurchase}
+        onCancel={() => setShowConfirmation(false)}
+      />
+
+      {/* Post Purchase Modal */}
+      <PostPurchaseModal 
+        isOpen={showPostPurchase}
+        onClose={() => setShowPostPurchase(false)}
+      />
+    </>
   );
 };
 

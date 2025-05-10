@@ -9,6 +9,7 @@ import ToastNotification from "./components/ToastNotification";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LineButton from './components/LineButton';
 import { useSiteSettings } from "./contexts/SiteSettingsContext";
+import { PageContentProvider } from './contexts/PageContentContext';
 
 const App = () => {
   const { settings, updateSettings } = useSiteSettings();
@@ -33,12 +34,14 @@ const App = () => {
       <ThemeProvider>
         <NotificationProvider>
           <BalanceProvider>
-            <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-              <Navbar />
-              <AppRoutes />
-              <ToastNotification />
-              <LineButton />
-            </div>
+            <PageContentProvider>
+              <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+                <Navbar />
+                <AppRoutes />
+                <ToastNotification />
+                <LineButton />
+              </div>
+            </PageContentProvider>
           </BalanceProvider>
         </NotificationProvider>
       </ThemeProvider>

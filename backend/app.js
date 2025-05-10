@@ -10,6 +10,12 @@ const siteSettingsRouter = require('./routes/site-settings');
 const authRouter = require('./routes/auth');
 const paymentRouter = require('./routes/payment'); // Add this line
 const adminAuthRouter = require('./routes/admin/auth'); // เพิ่ม route สำหรับ admin auth
+const pageContentsRouter = require('./routes/admin/page-contents');
+const pageSectionsRouter = require('./routes/admin/page-sections');
+const productTagsRouter = require('./routes/admin/product-tags');
+const pageContentRoutes = require('./routes/pageContent');
+const navigationItemsRouter = require('./routes/navigation-items');
+const giftRoutes = require('./routes/admin/giftRoutes');
 
 const app = express();
 
@@ -24,6 +30,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// เพิ่ม static middleware
+app.use('/uploads', express.static('public/uploads'));
+
 // Routes
 app.use('/api/order-items', orderItemsRouter);
 app.use('/api/users', usersRouter);
@@ -35,6 +44,12 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRouter);
 app.use('/api/payment', paymentRouter); // Add this line
 app.use('/api/admin/auth', adminAuthRouter); // เพิ่ม route สำหรับ admin auth
+app.use('/api/admin/page-contents', pageContentsRouter);
+app.use('/api/admin/page-sections', pageSectionsRouter);
+app.use('/api/admin/product-tags', productTagsRouter);
+app.use('/api', pageContentRoutes);
+app.use('/api/navigation-items', navigationItemsRouter);
+app.use('/api/admin', giftRoutes);
 
 // Test route
 app.get('/', (req, res) => {

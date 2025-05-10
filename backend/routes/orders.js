@@ -23,7 +23,8 @@ router.get('/', async (req, res) => {
             'id', p.id,
             'name', p.name,
             'quantity', oi.quantity,
-            'price', oi.price
+            'price', oi.price,
+            'secret_data', p.secret_data
           )
         ) as items
       FROM orders o
@@ -116,14 +117,22 @@ router.post('/', async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const { items, total, customer_name } = req.body;
+    const { items, total, status, customer_name } = req.body;
     const userId = req.user.id;
+
+    console.log('Received status:', status); // เพิ่ม log
 
     if (!items || !total) {
       return res.status(400).json({ 
         success: false, 
         message: 'Items and total are required' 
       });
+    }
+
+    // Validate status
+    const validStatuses = ['รอดำเนินการ', 'จัดส่งแล้ว', 'สำเร็จ', 'ยกเลิก'];
+    if (!validStatuses.includes(status)) {
+      throw new Error('สถานะไม่ถูกต้อง (ต้องเป็น: ' + validStatuses.join(', ') + ')');
     }
 
     // Check user balance
@@ -136,10 +145,10 @@ router.post('/', async (req, res) => {
       throw new Error('ยอดเงินในบัญชีไม่เพียงพอ');
     }
 
-    // Create order
+    // Create order with validated status
     const [orderResult] = await connection.query(
       'INSERT INTO orders (user_id, customer_name, total, status) VALUES (?, ?, ?, ?)',
-      [userId, customer_name || null, total, 'รอดำเนินการ']
+      [userId, customer_name || null, total, status]
     );
 
     // Add order items
@@ -201,6 +210,34 @@ router.post('/items', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error adding order item'
+    });
+  }
+});
+
+// Check product access
+router.get('/check-access/:productId', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const productId = req.params.productId;
+
+    const [hasAccess] = await pool.query(
+      `SELECT EXISTS(
+        SELECT 1 FROM orders o
+        JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'สำเร็จ'
+      ) as has_access`,
+      [userId, productId]
+    );
+
+    res.json({
+      success: true,
+      hasAccess: !!hasAccess[0].has_access
+    });
+  } catch (err) {
+    console.error('Error checking product access:', err);
+    res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์การเข้าถึง'
     });
   }
 });

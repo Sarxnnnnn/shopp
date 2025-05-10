@@ -1,9 +1,9 @@
 // นำเข้าส่วนประกอบที่จำเป็น
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Boxes, ReceiptText, BarChart, Settings } from 'lucide-react';
+import { LayoutDashboard, Boxes, ReceiptText, BarChart, Settings, Users, FileText, UserCog, Gift } from 'lucide-react';
 
-// นำเข้าหน้าจัดการต่างๆ
+// นำเข้าคอมโพเนนต์
 import OverviewTab from './OverviewTab';
 import ProductManagement from './ProductManagement';
 import UserManagement from './UserManagement';
@@ -11,16 +11,20 @@ import OrderManagement from './OrderManagement';
 import SalesReport from './SalesReport';
 import AdminsTab from './AdminsTab';
 import SiteSettingsTab from './SiteSettingsTab';
+import PageContentsTab from '../../components/admin/PageContentsTab';
+import GiftManagementTab from './GiftManagementTab';
 
 // รายการเมนูของแอดมิน
 const menuItems = [
   { name: 'ภาพรวม', icon: <LayoutDashboard size={20} />, component: <OverviewTab /> },
   { name: 'จัดการสินค้า', icon: <Boxes size={20} />, component: <ProductManagement /> },
-  { name: 'จัดการผู้ใช้', icon: <ReceiptText size={20} />, component: <UserManagement /> },
+  { name: 'จัดการผู้ใช้', icon: <Users size={20} />, component: <UserManagement /> },
   { name: 'จัดการออเดอร์', icon: <ReceiptText size={20} />, component: <OrderManagement /> },
   { name: 'รายงานยอดขาย', icon: <BarChart size={20} />, component: <SalesReport /> },
-  { name: 'จัดการแอดมิน', icon: <ReceiptText size={20} />, component: <AdminsTab /> },
+  { name: 'จัดการแอดมิน', icon: <UserCog size={20} />, component: <AdminsTab /> },
+  { name: 'จัดการเนื้อหา', icon: <FileText size={20} />, component: <PageContentsTab /> },
   { name: 'ตั้งค่าเว็บไซต์', icon: <Settings size={20} />, component: <SiteSettingsTab /> },
+  { name: 'จัดการซองอั่งเปา', icon: <Gift size={20} />, component: <GiftManagementTab /> },
 ];
 
 export default function AdminDashboard() {

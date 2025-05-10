@@ -1,44 +1,34 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
+import { usePageContent } from '../contexts/PageContentContext';
+import { DynamicIcon } from "../components/DynamicIcon";
 
 const FaqPage = () => {
   const [openIndex, setOpenIndex] = useState(null);
-  
-  const faqs = [
-    {
-      question: "วิธีการสั่งซื้อสินค้า",
-      answer: "ท่านสามารถเลือกสินค้าที่ต้องการ เพิ่มลงตะกร้า และทำการชำระเงินได้ทันที"
-    },
-    {
-      question: "ช่องทางการชำระเงิน",
-      answer: "รองรับการชำระเงินผ่านระบบเติมเงินในเว็บไซต์"
-    },
-    {
-      question: "การจัดส่งสินค้า",
-      answer: "จัดส่งสินค้าภายใน 24 ชั่วโมงหลังจากได้รับการยืนยันการชำระเงิน"
-    },
-    {
-      question: "นโยบายการคืนสินค้า",
-      answer: "สามารถคืนสินค้าได้ภายใน 7 วันหากพบปัญหาจากตัวสินค้า"
-    }
-  ];
+  const { pageContents, pageSections, loading } = usePageContent('faq');
+
+  if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen pt-24 px-4 md:ml-60">
+    <div className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-bold text-center mb-12"
+          className="text-3xl font-bold text-center mb-8"
         >
-          คำถามที่พบบ่อย
+          {pageContents?.title}
         </motion.h1>
 
+        <div className="prose dark:prose-invert max-w-none mb-8">
+          {pageContents?.content}
+        </div>
+
         <div className="space-y-4">
-          {faqs.map((faq, index) => (
+          {pageSections?.map((section, index) => (
             <motion.div
-              key={index}
+              key={section.section_key}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
@@ -48,7 +38,10 @@ const FaqPage = () => {
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 className="w-full px-6 py-4 text-left flex justify-between items-center"
               >
-                <span className="font-semibold">{faq.question}</span>
+                <div className="flex items-center gap-3">
+                  <DynamicIcon name={section.icon} className="w-5 h-5 text-primary" />
+                  <span className="font-semibold">{section.title}</span>
+                </div>
                 <ChevronDown
                   className={`transform transition-transform ${
                     openIndex === index ? "rotate-180" : ""
@@ -65,7 +58,7 @@ const FaqPage = () => {
                     className="px-6 pb-4"
                   >
                     <p className="text-gray-600 dark:text-gray-400">
-                      {faq.answer}
+                      {section.content}
                     </p>
                   </motion.div>
                 )}

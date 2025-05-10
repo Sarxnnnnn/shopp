@@ -19,19 +19,19 @@ export default function SalesReport() {
         });
         
         if (response.data?.data?.salesByDate) {
-          // Filter out zero sales and sort by date
           const filteredData = response.data.data.salesByDate
-            .filter(sale => sale.revenue > 0)
+            .filter(sale => sale?.revenue && !isNaN(sale.revenue)) // กรองข้อมูลที่มีค่า revenue ที่ถูกต้อง
+            .map(sale => ({
+              date: new Date(sale.date).toLocaleDateString('th-TH', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              }),
+              total: parseFloat(sale.revenue) || 0 // แปลงเป็นตัวเลขและใช้ 0 ถ้าแปลงไม่ได้
+            }))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
           
-          setSalesData(filteredData.map(sale => ({
-            date: new Date(sale.date).toLocaleDateString('th-TH', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric'
-            }),
-            total: sale.revenue
-          })));
+          setSalesData(filteredData);
         }
       } catch (error) {
         console.error('Error fetching sales data:', error);
@@ -47,8 +47,11 @@ export default function SalesReport() {
     return () => clearInterval(interval);
   }, []);
   
-  // คำนวณยอดขายรวม
-  const totalSales = salesData.reduce((sum, item) => sum + item.total, 0);
+  // คำนวณยอดขายรวมและตรวจสอบค่า
+  const totalSales = salesData.reduce((sum, item) => {
+    const amount = parseFloat(item.total) || 0;
+    return sum + amount;
+  }, 0);
 
   if (loading) {
     return <div>Loading...</div>;  // ระหว่างที่โหลดข้อมูล

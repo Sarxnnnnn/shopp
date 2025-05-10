@@ -14,31 +14,46 @@ const fadeIn = {
 
 const AccountSettingsPage = () => {
   const { user } = useAuth();
+  const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showOldPassword, setShowOldPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { showNotification } = useNotification();
   const navigate = useNavigate();
 
   const handleChangePassword = async () => {
+    if (!oldPassword) {
+      showNotification('กรุณากรอกรหัสผ่านเก่า', 'error');
+      return;
+    }
+
     if (!newPassword || !confirmPassword) {
       showNotification('กรุณากรอกรหัสผ่านให้ครบ', 'error');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showNotification('รหัสผ่านไม่ตรงกัน', 'error');
+      showNotification('รหัสผ่านใหม่ไม่ตรงกัน', 'error');
       return;
     }
 
     try {
-      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/auth/change-password`, { newPassword }, {
-        headers: { Authorization: `Bearer ${user?.token}` },
-      });
-      showNotification('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', 'success');
-      setNewPassword('');
-      setConfirmPassword('');
+      const response = await axios.put(
+        `${import.meta.env.VITE_API_BASE_URL}/api/auth/change-password`,
+        { oldPassword, newPassword },
+        { headers: { Authorization: `Bearer ${user?.token}` }}
+      );
+
+      if (response.data.success) {
+        showNotification('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', 'success');
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        showNotification(response.data.message || 'รหัสผ่านเก่าไม่ถูกต้อง', 'error');
+      }
     } catch (error) {
       showNotification('ไม่สามารถเปลี่ยนรหัสผ่านได้', 'error');
     }
@@ -56,6 +71,26 @@ const AccountSettingsPage = () => {
       >
         <h2 className="text-2xl font-semibold text-center">ตั้งค่าบัญชี</h2>
         <div className="space-y-4">
+          <div>
+            <label className="block mb-1 text-sm font-medium">รหัสผ่านเก่า</label>
+            <div className="relative">
+              <input
+                type={showOldPassword ? 'text' : 'password'}
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                className="w-full p-3 pr-10 border rounded bg-gray-50 dark:bg-gray-700"
+                placeholder="รหัสผ่านเก่า"
+              />
+              <button
+                type="button"
+                onClick={() => setShowOldPassword(!showOldPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+              >
+                {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block mb-1 text-sm font-medium">รหัสผ่านใหม่</label>
             <div className="relative">

@@ -583,7 +583,7 @@ router.put('/orders/:id', verifyAdminToken, async (req, res) => {
     const { status } = req.body;
 
     // Validate status
-    const validStatuses = ['รอดำเนินการ', 'จัดส่งแล้ว', 'ยกเลิก'];
+    const validStatuses = ['รอดำเนินการ', 'ดำเนินการสำเร็จ', 'ยกเลิก'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -631,30 +631,35 @@ router.get('/products', verifyAdminToken, async (req, res) => {
 // POST /api/admin/products
 router.post('/products', verifyAdminToken, async (req, res) => {
   try {
-    const { name, price, stock, description, status, image } = req.body;
-    
-    // Input validation
-    if (!name || !price || stock === undefined) {
+    const {
+      name,
+      price,
+      stock,
+      description,
+      tag,
+      secret_data
+    } = req.body;
+
+    if (!name || typeof price !== 'number' || typeof stock !== 'number') {
       return res.status(400).json({
         success: false,
         message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
       });
     }
 
-    // Ensure numeric values
-    const numericPrice = Number(price);
-    const numericStock = Number(stock);
-
-    if (isNaN(numericPrice) || isNaN(numericStock)) {
-      return res.status(400).json({
-        success: false,
-        message: 'ราคาและจำนวนสินค้าต้องเป็นตัวเลข'
-      });
-    }
-
     const [result] = await pool.query(
-      'INSERT INTO products (name, price, stock, description, status, image) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, numericPrice, numericStock, description || '', status || 'พร้อมขาย', image || null]
+      `INSERT INTO products (
+        name, price, stock, description, 
+        tag, secret_data
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        price,
+        stock,
+        description || '',
+        tag || 'normal',
+        secret_data || null
+      ]
     );
 
     res.json({
@@ -663,11 +668,11 @@ router.post('/products', verifyAdminToken, async (req, res) => {
       product: {
         id: result.insertId,
         name,
-        price: numericPrice,
-        stock: numericStock,
+        price,
+        stock,
         description,
-        status,
-        image
+        tag,
+        secret_data
       }
     });
   } catch (err) {
@@ -680,31 +685,89 @@ router.post('/products', verifyAdminToken, async (req, res) => {
   }
 });
 
-// อัพเดทสินค้า
+// PUT /api/admin/products/:id
 router.put('/products/:id', verifyAdminToken, async (req, res) => {
+  const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { name, price, stock, description, status, tag } = req.body;
+    const updates = req.body;
 
-    // Validate required fields
-    if (!name || !price || stock === undefined) {
-      return res.status(400).json({
+    // ตรวจสอบข้อมูลที่จำเป็น
+    const requiredFields = ['name', 'price', 'stock', 'status'];
+    for (const field of requiredFields) {
+      if (!updates[field] && updates[field] !== 0) {
+        return res.status(400).json({
+          success: false,
+          message: `กรุณากรอก ${field}`
+        });
+      }
+    }
+
+    // แยกการ modify column ออกมาก่อน
+    await connection.query('ALTER TABLE products MODIFY COLUMN tag VARCHAR(50)');
+    
+    // อัพเดทข้อมูลหลังจาก modify column สำเร็จ
+    const [result] = await connection.query(
+      'UPDATE products SET ? WHERE id = ?',
+      [updates, id]
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({
         success: false,
-        message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
+        message: 'ไม่พบสินค้าที่ต้องการแก้ไข'
       });
     }
 
-    // Validate numeric values
-    if (isNaN(Number(price)) || isNaN(Number(stock))) {
+    const [updatedProduct] = await connection.query(
+      'SELECT * FROM products WHERE id = ?',
+      [id]
+    );
+
+    await connection.commit();
+
+    res.json({
+      success: true,
+      message: 'อัพเดทสินค้าสำเร็จ',
+      data: updatedProduct[0]
+    });
+
+  } catch (err) {
+    await connection.rollback();
+    console.error('Error updating product:', err);
+    res.status(500).json({
+      success: false,
+      message: 'ไม่สามารถอัพเดทสินค้าได้'
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// PUT /api/admin/products/:id/tag - อัพเดทแท็กของสินค้า
+router.put('/products/:id/tag', verifyAdminToken, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const { tag } = req.body;
+
+    // ตรวจสอบว่าแท็กที่ส่งมามีอยู่ในฐานข้อมูลหรือไม่
+    const [existingTag] = await connection.query(
+      'SELECT name FROM product_tags WHERE name = ?',
+      [tag]
+    );
+
+    if (existingTag.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'ราคาและจำนวนสินค้าต้องเป็นตัวเลข'
+        message: 'แท็กไม่ถูกต้อง'
       });
     }
 
-    const [result] = await pool.query(
-      'UPDATE products SET name = ?, price = ?, stock = ?, description = ?, status = ?, tag = ? WHERE id = ?',
-      [name, Number(price), Number(stock), description || '', status || 'พร้อมขาย', tag || 'normal', id]
+    const [result] = await connection.query(
+      'UPDATE products SET tag = ? WHERE id = ?',
+      [tag, id]
     );
 
     if (result.affectedRows === 0) {
@@ -714,25 +777,257 @@ router.put('/products/:id', verifyAdminToken, async (req, res) => {
       });
     }
 
-    // ดึงข้อมูลสินค้าที่อัพเดทแล้ว
-    const [updatedProduct] = await pool.query(
-      'SELECT * FROM products WHERE id = ?',
-      [id]
+    await connection.commit();
+    res.json({
+      success: true,
+      message: 'อัพเดทแท็กสำเร็จ'
+    });
+
+  } catch (err) {
+    await connection.rollback();
+    console.error('Error updating product tag:', err);
+    res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการอัพเดทแท็ก'
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// PUT /api/admin/product-tags - อัพเดทแท็กทั้งหมด
+router.put('/product-tags', verifyAdminToken, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const { tags } = req.body;
+    
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tags must be an array'
+      });
+    }
+
+    await connection.beginTransaction();
+
+    // Get existing tags from database
+    const [existingTags] = await connection.query('SELECT name FROM product_tags');
+    const existingTagNames = existingTags.map(t => t.name);
+    
+    // Get new tag names from request
+    const newTagNames = tags.map(t => t.name);
+
+    // Find tags to delete (existing tags not in new tags)
+    const tagsToDelete = existingTagNames.filter(name => !newTagNames.includes(name));
+
+    // Update products using tags that will be deleted to use 'normal' tag
+    if (tagsToDelete.length > 0) {
+      await connection.query(
+        'UPDATE products SET tag = "normal" WHERE tag IN (?)',
+        [tagsToDelete]
+      );
+    }
+
+    // Now we can safely delete old tags
+    if (tagsToDelete.length > 0) {
+      await connection.query(
+        'DELETE FROM product_tags WHERE name IN (?)',
+        [tagsToDelete]
+      );
+    }
+
+    // Insert or update tags
+    for (const tag of tags) {
+      await connection.query(
+        `INSERT INTO product_tags (name, display_name, color, order_index) 
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+         display_name = VALUES(display_name),
+         color = VALUES(color),
+         order_index = VALUES(order_index)`,
+        [tag.name, tag.display_name, tag.color || 'bg-gray-500', tag.order_index]
+      );
+    }
+
+    await connection.commit();
+
+    // Fetch updated tags
+    const [updatedTags] = await connection.query(
+      'SELECT * FROM product_tags ORDER BY order_index'
     );
 
     res.json({
       success: true,
-      message: 'อัพเดทสินค้าสำเร็จ',
-      data: updatedProduct[0]
+      message: 'Tags updated successfully',
+      data: updatedTags
     });
 
-  } catch (error) {
-    console.error('Error updating product:', error);
+  } catch (err) {
+    await connection.rollback();
+    console.error('Error updating tags:', err);
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Error updating tags'
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// PUT /api/admin/product-tags/:id
+router.put('/product-tags/:id', verifyAdminToken, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const { display_name, icon } = req.body;
+
+    const [result] = await connection.query(
+      'UPDATE product_tags SET display_name = ?, icon = ? WHERE id = ?',
+      [display_name, icon, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบแท็กที่ต้องการแก้ไข'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'อัพเดทแท็กสำเร็จ'
+    });
+
+  } catch (err) {
+    console.error('Error updating tag:', err);
     res.status(500).json({
       success: false,
-      message: 'เกิดข้อผิดพลาดในการอัพเดทสินค้า',
-      error: error.message
+      message: 'ไม่สามารถอัพเดทแท็กได้'
     });
+  } finally {
+    connection.release();
+  }
+});
+
+// PUT /api/admin/product-tags/:id
+router.put('/product-tags/:id', verifyAdminToken, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const { icon } = req.body;
+
+    const [result] = await connection.query(
+      'UPDATE product_tags SET icon = ? WHERE id = ?',
+      [icon, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบแท็กที่ต้องการแก้ไข'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'อัพเดทไอคอนสำเร็จ'
+    });
+
+  } catch (err) {
+    console.error('Error updating tag icon:', err);
+    res.status(500).json({
+      success: false,
+      message: 'ไม่สามารถอัพเดทไอคอนได้'
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// อัพเดทฐานข้อมูลให้รองรับ custom tags
+router.post('/setup-custom-tags', verifyAdminToken, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.query(`
+      ALTER TABLE products MODIFY COLUMN tag VARCHAR(50);
+      ALTER TABLE product_tags MODIFY COLUMN name VARCHAR(50);
+    `);
+
+    res.json({
+      success: true,
+      message: 'Updated database schema for custom tags'
+    });
+  } catch (err) {
+    console.error('Error setting up custom tags:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to setup custom tags'
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+// GET /api/admin/product-tags
+router.get('/product-tags', verifyAdminToken, async (req, res) => {
+  try {
+    const [tags] = await pool.query('SELECT * FROM product_tags ORDER BY id');
+    res.json({ success: true, data: tags });
+  } catch (err) {
+    console.error('Error fetching tags:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching tags'
+    });
+  }
+});
+
+// POST /api/admin/product-tags
+router.post('/product-tags', verifyAdminToken, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const { name, display_name, color } = req.body;
+
+    // ตรวจสอบว่าชื่อแท็กซ้ำหรือไม่
+    const [existingTag] = await connection.query(
+      'SELECT * FROM product_tags WHERE name = ?',
+      [name]
+    );
+
+    if (existingTag.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'แท็กนี้มีอยู่แล้ว'
+      });
+    }
+
+    // เพิ่มแท็กใหม่
+    const [result] = await connection.query(
+      'INSERT INTO product_tags (name, display_name, color) VALUES (?, ?, ?)',
+      [name, display_name, color]
+    );
+
+    const [newTag] = await connection.query(
+      'SELECT * FROM product_tags WHERE id = ?',
+      [result.insertId]
+    );
+
+    await connection.commit();
+    res.json({
+      success: true,
+      data: newTag[0],
+      message: 'เพิ่มแท็กสำเร็จ'
+    });
+
+  } catch (err) {
+    await connection.rollback();
+    console.error('Error creating tag:', err);
+    res.status(500).json({
+      success: false,
+      message: 'ไม่สามารถเพิ่มแท็กได้'
+    });
+  } finally {
+    connection.release();
   }
 });
 
@@ -1099,6 +1394,90 @@ router.delete('/users/:id', verifyAdminToken, async (req, res) => {
   } finally {
     connection.release();
   }
+});
+
+// GET /api/admin/navigation-items
+router.get('/navigation-items', async (req, res) => {
+  try {
+    const [items] = await pool.query('SELECT * FROM navigation_items ORDER BY order_index');
+    res.json({
+      success: true,
+      data: items
+    });
+  } catch (err) {
+    console.error('Error fetching navigation items:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch navigation items'
+    });
+  }
+});
+
+// PUT /api/admin/navigation-items/:id
+router.put('/navigation-items/:id', verifyAdminToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const [result] = await pool.query(
+      'UPDATE navigation_items SET ? WHERE id = ?',
+      [updates, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Navigation item not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Navigation item updated successfully'
+    });
+  } catch (err) {
+    console.error('Error updating navigation item:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update navigation item'
+    });
+  }
+});
+
+// GET /api/admin/orders/stream - SSE endpoint
+router.get('/orders/stream', verifyAdminToken, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  // ฟังก์ชันส่งข้อมูลไปยัง client
+  const sendUpdate = async () => {
+    try {
+      const [orders] = await pool.query(`
+        SELECT 
+          o.id,
+          u.name as customer,
+          o.total,
+          o.status,
+          DATE_FORMAT(o.created_at, '%d/%m/%Y %H:%i') as date
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        ORDER BY o.created_at DESC
+      `);
+      
+      res.write(`data: ${JSON.stringify(orders)}\n\n`);
+    } catch (err) {
+      console.error('Error fetching orders for SSE:', err);
+    }
+  };
+
+  // ส่งข้อมูลทุก 2 วินาที
+  const intervalId = setInterval(sendUpdate, 2000);
+
+  // Cleanup เมื่อ client ตัดการเชื่อมต่อ
+  req.on('close', () => {
+    clearInterval(intervalId);
+  });
 });
 
 module.exports = router;

@@ -46,7 +46,7 @@ const OrderHistoryPage = () => {
         return `${baseStyle} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200`;
       case 'pending':
       case 'รอดำเนินการ':
-        return `${baseStyle} bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200`;
+        return `${baseStyle} bg-yellow-500 text-white`; // เปลี่ยนสีเป็นสีเหลืองเข้ม
       case 'cancelled':
       case 'ยกเลิก':
         return `${baseStyle} bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200`;
@@ -63,7 +63,7 @@ const OrderHistoryPage = () => {
         return 'จัดส่งแล้ว';
       case 'pending':
       case 'รอดำเนินการ':
-        return 'รอดำเนินการ';
+        return 'ดำเนินการสำเร็จ';
       case 'cancelled':
       case 'ยกเลิก':
         return 'ยกเลิก';
@@ -179,6 +179,13 @@ const OrderHistoryPage = () => {
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                               จำนวน: {item.quantity}
                             </p>
+                            {item.secret_data && (
+                              <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                                <p className="text-sm font-mono whitespace-pre-wrap">
+                                  {item.secret_data}
+                                </p>
+                              </div>
+                            )}
                           </div>
                           <p className="font-semibold">฿{Number(item.price).toLocaleString()}</p>
                         </div>

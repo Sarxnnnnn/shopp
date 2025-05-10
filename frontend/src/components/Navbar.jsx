@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import {FaHome, FaEnvelope, FaFileContract, FaShieldAlt, FaInfoCircle, FaQuestionCircle} from 'react-icons/fa';
+import { FaHome, FaEnvelope, FaFileContract, FaShieldAlt, FaInfoCircle, FaQuestionCircle } from 'react-icons/fa';
 import { LiaWindowRestore } from 'react-icons/lia';
 import { MdFiberNew } from 'react-icons/md';
 import { TbChartBar } from 'react-icons/tb';
@@ -13,6 +13,7 @@ import { useBalance } from '../contexts/BalanceContext';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
 import axios from 'axios';
 import { fetchBalance } from '../utils/api';
+import Icon from './Icon';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -32,6 +33,7 @@ const Navbar = () => {
   const toggleButtonRef = useRef(null);
   const settingsMenuRef = useRef(null);
   const [userInfo, setUserInfo] = useState(null);
+  const [navItems, setNavItems] = useState([]);
 
   const handleToggle = () => setIsOpen(!isOpen);
 
@@ -136,6 +138,37 @@ const Navbar = () => {
     }
   }, [user, logout]);
 
+  useEffect(() => {
+    const fetchNavItems = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/admin/navigation-items`);
+        if (response.data.success) {
+          const activeItems = response.data.data.filter(item => item.is_active);
+          setNavItems(activeItems);
+        }
+      } catch (error) {
+        console.error('Error fetching nav items:', error);
+      }
+    };
+
+    fetchNavItems();
+  }, []);
+
+  const menuItems = [
+    { name: 'หน้าหลัก', icon: <FaHome size={20} />, path: '/' },
+    ...navItems.map(item => ({
+      name: item.display_name,
+      icon: <Icon name={item.icon} size="20" />,
+      path: item.path
+    })),
+    { divider: true },
+    { name: 'ช่องทางการติดต่อ', icon: <FaEnvelope size={20} />, path: '/contact' },
+    { name: 'เงื่อนไขการให้บริการ', icon: <FaFileContract />, path: '/terms' },
+    { name: 'นโยบายความเป็นส่วนตัว', icon: <FaShieldAlt />, path: '/privacy' },
+    { name: 'เกี่ยวกับเรา', icon: <FaInfoCircle />, path: '/about' },
+    { name: 'คำถามที่พบบ่อย', icon: <FaQuestionCircle />, path: '/faq' },
+  ];
+
   const authButtonStyle = (path) =>
     `px-3 py-1 rounded border transition-all duration-300 text-sm transform hover:scale-105 ${
       location.pathname === path
@@ -157,19 +190,6 @@ const Navbar = () => {
     shadow-lg hover:shadow-yellow-500/20
   `;
 
-  const navItems = [
-    { name: 'หน้าหลัก', icon: <FaHome />, path: '/' },
-    { name: 'สินค้าทั่วไป', icon: <LiaWindowRestore />, path: '/normalproduct' },
-    { name: 'สินค้าใหม่', icon: <MdFiberNew />, path: '/newproduct' },
-    { name: 'สินค้าขายดี', icon: <TbChartBar />, path: '/popularproduct' },
-    { divider: true },
-    { name: 'ช่องทางการติดต่อ', icon: <FaEnvelope />, path: '/contact' },
-    { name: 'เงื่อนไขการให้บริการ', icon: <FaFileContract />, path: '/terms' },
-    { name: 'นโยบายความเป็นส่วนตัว', icon: <FaShieldAlt />, path: '/privacy' },
-    { name: 'เกี่ยวกับเรา', icon: <FaInfoCircle />, path: '/about' },
-    { name: 'คำถามที่พบบ่อย', icon: <FaQuestionCircle />, path: '/faq' },
-  ];
-
   const avatarUrl = '/default-avatar.png';
 
   const handleNavigate = (path) => {
@@ -188,7 +208,7 @@ const Navbar = () => {
       </button>
 
       {showSettingsMenu && (
-        <div className="absolute right-0 mt-2 w-48 bg-black/90 text-white px-4 py-3 rounded-lg shadow-lg z-[999] backdrop-blur-sm animate-fadeIn">
+        <div className="absolute right-0 mt-2 w-48 bg-black/90 text-white px-4 py-3 rounded-lg shadow-lg z-[60] backdrop-blur-sm animate-fadeIn">
           <button
             type="button"
             onClick={() => handleNavigate('/order-history')}
@@ -268,7 +288,6 @@ const Navbar = () => {
                   </span>
                 </span>
               </Link>
-              {/* แทนที่ renderSettingsButton ด้วยปุ่มแยก */}
               <Link
                 to="/order-history"
                 className={`${topBarButtonStyle} text-sm font-medium text-gray-200 group`}
@@ -331,7 +350,7 @@ const Navbar = () => {
           </Link>
         )}
         <div className="space-y-1 mt-10">
-          {navItems.map((item, idx) =>
+          {menuItems.map((item, idx) =>
             item.divider ? (
               <div key={`divider-${idx}`} className="border-t border-white/20 my-3" />
             ) : (
@@ -425,11 +444,8 @@ const Navbar = () => {
                 className={`${topBarButtonStyle} text-sm font-medium text-gray-200`}
               >
                 <Wallet className="h-5 w-5 animate-bounce" />
-                <span className="flex items-center gap-1">
-                  เติมเงิน
                   <span className="font-bold text-yellow-400">
                     {balance ? balance.toLocaleString() : '0'} บาท
-                  </span>
                 </span>
               </Link>
               {renderSettingsButton()}
@@ -461,10 +477,10 @@ const Navbar = () => {
       {isOpen && (
         <div 
           ref={mobileNavRef}
-          className="md:hidden fixed top-16 right-2 bg-black/90 text-white px-4 py-3 z-40 rounded-lg shadow-lg min-w-fit backdrop-blur-sm animate-fadeIn"
+          className="md:hidden fixed top-16 right-2 bg-black/90 text-white px-4 py-3 z-[60] rounded-lg shadow-lg min-w-fit backdrop-blur-sm animate-fadeIn"
         >
           <ul className="space-y-1">
-            {navItems.map((item, idx) =>
+            {menuItems.map((item, idx) =>
               item.divider ? (
                 <hr key={`divider-${idx}`} className="border-white/20 my-2" />
               ) : (

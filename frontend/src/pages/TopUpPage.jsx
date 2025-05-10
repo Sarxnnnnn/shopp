@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, ChevronLeft } from 'lucide-react';
+import { Upload, ChevronLeft, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
+import TopUpHistory from '../components/TopUpHistory';
 
 const TopUpPage = ({ onBalanceUpdate }) => {
   const { user } = useAuth();
@@ -22,6 +23,8 @@ const TopUpPage = ({ onBalanceUpdate }) => {
   const [settings, setSettings] = useState(null);
   const [minTopup, setMinTopup] = useState(0);
   const [maxTopup, setMaxTopup] = useState(0);
+  const [transactions, setTransactions] = useState([]);
+  const [giftCode, setGiftCode] = useState('');
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -35,7 +38,19 @@ const TopUpPage = ({ onBalanceUpdate }) => {
       }
     };
     fetchSettings();
+    fetchTransactions();
   }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      const response = await axios.get('/api/payment/transactions', {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      setTransactions(response.data.data);
+    } catch (error) {
+      showNotification('ไม่สามารถโหลดประวัติการเติมเงินได้', 'error');
+    }
+  };
 
   const handleGenerateQR = async () => {
     const amountNum = parseFloat(amount);
@@ -179,6 +194,23 @@ const TopUpPage = ({ onBalanceUpdate }) => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGiftCodeSubmit = async () => {
+    try {
+      const response = await axios.post('/api/payment/redeem-gift', 
+        { code: giftCode },
+        { headers: { Authorization: `Bearer ${user.token}` }}
+      );
+      
+      if (response.data.success) {
+        showNotification(`เติมเงินสำเร็จ: +${response.data.amount}฿`, 'success');
+        setGiftCode('');
+        fetchTransactions();
+      }
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'รหัสซองอั่งเปาไม่ถูกต้อง', 'error');
     }
   };
 
@@ -361,6 +393,34 @@ const TopUpPage = ({ onBalanceUpdate }) => {
           )}
         </AnimatePresence>
       </motion.div>
+
+      {/* Gift Code Section */}
+      <div className="max-w-lg mx-auto mt-8 bg-white dark:bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Gift className="w-5 h-5 text-yellow-500" />
+          เติมเงินด้วยซองอั่งเปา
+        </h3>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={giftCode}
+            onChange={(e) => setGiftCode(e.target.value)}
+            placeholder="กรอกรหัสซองอั่งเปา"
+            className="flex-1 p-2 border rounded-lg dark:bg-gray-700"
+          />
+          <button
+            onClick={handleGiftCodeSubmit}
+            className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+          >
+            เติมเงิน
+          </button>
+        </div>
+      </div>
+
+      {/* Transaction History */}
+      <div className="max-w-lg mx-auto mt-8">
+        <TopUpHistory transactions={transactions} />
+      </div>
     </div>
   );
 };

@@ -4,8 +4,10 @@ import ProductDetailModal from '../components/ProductDetailModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { motion } from 'framer-motion';
-import { fetchWithAuth, fetchProducts as fetchProductsApi, fetchNormalProducts, fetchPopularProducts, fetchNewProducts } from '../utils/api';
+import { fetchWithAuth, fetchProducts as fetchProductsApi } from '../utils/api';
 import { useSiteSettings } from '../contexts/SiteSettingsContext';
+import axios from 'axios';
+import Icon from '../components/Icon';
 
 const HomePage = () => {
   const { isLoggedIn, user } = useAuth();
@@ -16,43 +18,30 @@ const HomePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortType, setSortType] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [normalProducts, setNormalProducts] = useState([]);
-  const [popularProducts, setPopularProducts] = useState([]);
-  const [newProducts, setNewProducts] = useState([]);
+  const [navigationItems, setNavigationItems] = useState([]);
 
   useEffect(() => {
-    const loadProducts = async () => {
+    const fetchData = async () => {
       try {
-        const [normalData, popularData, newData] = await Promise.all([
-          fetchNormalProducts(),
-          fetchPopularProducts(),
-          fetchNewProducts()
-        ]);
-
-        if (normalData?.success) setNormalProducts(normalData.data);
-        if (popularData?.success) setPopularProducts(popularData.data);
-        if (newData?.success) setNewProducts(newData.data);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-      }
-    };
-    loadProducts();
-  }, []);
-
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const data = await fetchProductsApi(user?.token);
-        if (data?.success) {
-          setProducts(data.data);
+        // ดึงข้อมูล navigation items ที่ active
+        const navResponse = await axios.get('http://localhost:3000/api/navigation-items');
+        if (navResponse.data.success) {
+          const activeNavItems = navResponse.data.data.filter(item => item.is_active);
+          setNavigationItems(activeNavItems);
         }
-      } catch (err) {
-        console.error('Error fetching products:', err);
-        setProducts([]);
+
+        // ดึงข้อมูลสินค้า
+        const productsResponse = await axios.get('http://localhost:3000/api/products');
+        if (productsResponse.data.success) {
+          setProducts(productsResponse.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
       }
     };
-    loadProducts();
-  }, [user]);
+
+    fetchData();
+  }, []);
 
   const handleSortChange = () => {
     setSortType((prev) => (prev + 1) % 3);
@@ -80,7 +69,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-24 px-4 md:ml-60 bg-gray-100 dark:bg-gray-900 text-black dark:text-white">
+    <div className="min-h-screen pt-20 px-4 md:ml-60">
       {/* Welcome Banner */}
       <motion.div
         initial={{ opacity: 0, y: -30 }}
@@ -163,50 +152,32 @@ const HomePage = () => {
         </motion.button>
       </div>
 
-      {/* Popular Products Section */}
-      <section className="w-full mb-8">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">สินค้ายอดนิยม</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filterAndSort(popularProducts).map((product) => (
-            <div key={product.id} className="transition-transform duration-300 hover:scale-105">
-              <ProductCard
-                product={product}
-                onShowDetail={() => setSelectedProduct(product)}
-              />
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* แสดงสินค้าตาม navigation */}
+      {navigationItems.map(nav => {
+        // กรองสินค้าตาม tag ที่ตรงกับชื่อ navigation
+        const filteredProducts = products.filter(product => 
+          product.tag === nav.name.toLowerCase().replace('product', '')
+        );
 
-      {/* New Products Section */}
-      <section className="w-full mb-8">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">สินค้าใหม่</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filterAndSort(newProducts).map((product) => (
-            <div key={product.id} className="transition-transform duration-300 hover:scale-105">
-              <ProductCard
-                product={product}
-                onShowDetail={() => setSelectedProduct(product)}
-              />
+        return (
+          <div key={nav.name} className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Icon name={nav.icon} className="w-6 h-6 text-yellow-500" />
+              <h2 className="text-2xl font-bold">{nav.display_name}</h2>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Normal Products Section */}
-      <section className="w-full">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">สินค้าทั่วไป</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filterAndSort(normalProducts).map((product) => (
-            <div key={product.id} className="transition-transform duration-300 hover:scale-105">
-              <ProductCard
-                product={product}
-                onShowDetail={() => setSelectedProduct(product)}
-              />
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredProducts.map(product => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  onShowDetail={() => setSelectedProduct(product)} 
+                />
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+        );
+      })}
 
       {/* Modal */}
       {selectedProduct && (

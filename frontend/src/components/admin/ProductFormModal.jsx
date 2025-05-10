@@ -7,6 +7,7 @@ const ProductFormModal = ({ product, onClose, onSave }) => {
     stock: product?.stock || '',
     description: product?.description || '',
     status: product?.status || 'พร้อมขาย',
+    secret_data: product?.secret_data || '',
     image: null,
     imagePreview: product?.image || null
   });
@@ -22,6 +23,7 @@ const ProductFormModal = ({ product, onClose, onSave }) => {
         stock: product.stock || '',
         description: product.description || '',
         status: product.status || 'พร้อมขาย',
+        secret_data: product.secret_data || '',
         image: null,
         imagePreview: product.image || null
       });
@@ -173,6 +175,22 @@ const ProductFormModal = ({ product, onClose, onSave }) => {
                 className="mt-2 w-full h-auto rounded-md"
               />
             )}
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="secret_data" className="block text-sm font-medium mb-2">
+              ข้อมูลลับ (จะแสดงเฉพาะผู้ที่ซื้อแล้ว)
+              <span className="text-xs text-gray-500 ml-1">(เช่น username/password, license key)</span>
+            </label>
+            <textarea
+              id="secret_data"
+              name="secret_data"
+              value={formData.secret_data}
+              onChange={handleChange}
+              rows="4"
+              className="w-full p-2 border rounded dark:bg-zinc-700 dark:border-zinc-600 dark:text-white font-mono text-sm"
+              placeholder="Username: xxxxx&#10;Password: xxxxx&#10;หรือข้อมูลลับอื่นๆ"
+            />
           </div>
 
           <div className="flex gap-3 justify-center">
